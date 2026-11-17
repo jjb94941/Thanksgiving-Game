@@ -12,21 +12,21 @@ main{max-width:480px;margin:0 auto;padding:16px 0 40px}
 h1{font-size:26px;margin:8px 0 4px}
 h2{font-size:20px;margin:6px 0}
 .card{background:var(--card);border-radius:14px;padding:18px;box-shadow:0 2px 8px rgba(0,0,0,.08);margin:12px 0}
-button{font:inherit;font-size:18px;border:0;border-radius:12px;padding:14px 18px;background:var(--accent);color:#fff;width:100%;margin:6px 0;cursor:pointer}
+button{font:inherit;font-size:18px;border:0;border-radius:12px;padding:14px 18px;background:var(--accent);color:#fff;width:100%;margin:6px 0;cursor:pointer;text-align:left}
+button.center-btn{text-align:center}
 button.secondary{background:#e9dfd3;color:var(--ink)}
-button.ghost{background:transparent;color:var(--accent);border:2px solid var(--accent)}
+button.ghost{background:transparent;color:var(--accent);border:2px solid var(--accent);text-align:center}
 button:disabled{opacity:.4;cursor:default}
 textarea,input{width:100%;font:inherit;font-size:17px;padding:12px;border:2px solid #d9cbbb;border-radius:10px;background:#fff;margin:6px 0 12px}
 label{display:block;color:var(--muted);font-size:15px;margin-top:4px}
 .muted{color:var(--muted);font-size:15px;margin:6px 0}
 .center{text-align:center}
 .tag{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 6px}
-.big{font-size:28px;font-weight:700;text-align:center;padding:22px 8px;line-height:1.25;word-wrap:break-word}
-.timer{font-size:56px;font-weight:700;text-align:center;font-variant-numeric:tabular-nums;color:var(--accent)}
-.final{font-size:24px;font-weight:700;text-align:center;margin:12px 0}
+.big{font-size:24px;font-weight:700;text-align:center;padding:14px 8px;line-height:1.25;word-wrap:break-word}
+.final{font-size:20px;font-weight:700;text-align:center;margin:12px 0}
 .score{display:flex;justify-content:space-between;align-items:center;font-size:18px;padding:8px 0;border-bottom:1px solid #eee}
 .row{display:flex;gap:8px}
-.row>button{flex:1}
+.row>button{flex:1;text-align:center}
 ul.plist{list-style:none;padding:0;margin:0 0 8px}
 ul.plist li{padding:6px 0;border-bottom:1px solid #eee}
 #flash{color:var(--err);min-height:1.3em;font-size:15px;text-align:center}
@@ -41,29 +41,131 @@ ul.plist li{padding:6px 0;border-bottom:1px solid #eee}
 <script>
 const sb = supabase.createClient(FFG_CONFIG.SUPABASE_URL, FFG_CONFIG.SUPABASE_KEY);
 
-const AWARDS = [
-  "Most likely to fix it without being asked",
-  "Most likely to reorganize the fridge",
-  "Best story nobody believes",
-  "Most likely to win a board game",
-  "Most likely to ask for the recipe",
-  "Most likely to fall asleep first after dinner"
+// Twelve questions. Each option has a "clue" that completes "Which person ___?"
+const QUESTIONS = [
+  { q: "What does your ideal free Saturday look like?", options: [
+    { label: "Outdoors: hiking, gardening, or the beach", clue: "would rather spend a free Saturday outdoors" },
+    { label: "Indoors with a book, a film, or a puzzle", clue: "would rather spend a free Saturday indoors with a book, film, or puzzle" },
+    { label: "Cooking, baking, or hosting friends", clue: "spends free Saturdays cooking or hosting" },
+    { label: "Sports, games, or a physical challenge", clue: "is happiest competing at a sport or game" },
+    { label: "Exploring a city, a museum, or the shops", clue: "loves exploring a city, a museum, or the shops" }
+  ]},
+  { q: "Where did you grow up?", options: [
+    { label: "A big city", clue: "grew up in a big city" },
+    { label: "A suburb", clue: "grew up in a suburb" },
+    { label: "A small town", clue: "grew up in a small town" },
+    { label: "A farm or the countryside", clue: "grew up on a farm or in the countryside" },
+    { label: "Outside the country", clue: "grew up outside the country" }
+  ]},
+  { q: "What kind of work have you done most?", options: [
+    { label: "Hands-on trades or fixing things", clue: "has spent a career working with their hands" },
+    { label: "Office, business, or finance", clue: "has spent a career in an office or in business" },
+    { label: "Teaching, medicine, or caring for others", clue: "has spent a career caring for or teaching others" },
+    { label: "Arts, media, or design", clue: "has spent a career in the arts or design" },
+    { label: "Mostly retired or at home", clue: "is retired or mostly at home these days" }
+  ]},
+  { q: "Which music do you reach for most?", options: [
+    { label: "Classical or opera", clue: "reaches for classical music or opera" },
+    { label: "Jazz or blues", clue: "reaches for jazz or blues" },
+    { label: "Rock, pop, or country", clue: "reaches for rock, pop, or country" },
+    { label: "Podcasts or audiobooks instead", clue: "would rather listen to podcasts or audiobooks than music" },
+    { label: "Whatever is on the radio", clue: "lets the radio choose the music" }
+  ]},
+  { q: "Which holiday tradition matters most to you?", options: [
+    { label: "Cooking the main dish", clue: "cares most about cooking the main dish" },
+    { label: "The parade, the football game, or a movie", clue: "is in charge of the parade, the game, or the movie" },
+    { label: "Board games or cards after dinner", clue: "wants board games or cards after dinner" },
+    { label: "A long walk before the meal", clue: "always insists on a walk before the meal" },
+    { label: "Calling relatives who couldn't come", clue: "makes the calls to relatives who couldn't come" }
+  ]},
+  { q: "What are people most likely to ask you for help with?", options: [
+    { label: "Fixing or building something", clue: "is the one people ask to fix or build something" },
+    { label: "Directions, planning, or travel", clue: "is the one people ask to plan a trip" },
+    { label: "Numbers, taxes, or money", clue: "is the one people ask about money or numbers" },
+    { label: "Technology or gadgets", clue: "is the one people ask about technology" },
+    { label: "Recipes and cooking advice", clue: "is the one people ask for recipes" }
+  ]},
+  { q: "What do you read or watch most?", options: [
+    { label: "Thrillers or mysteries", clue: "reads thrillers or mysteries" },
+    { label: "History or biographies", clue: "reads history or biographies" },
+    { label: "Fantasy or science fiction", clue: "reads fantasy or science fiction" },
+    { label: "Comedy or light entertainment", clue: "watches comedy and light entertainment" },
+    { label: "Science or nature documentaries", clue: "watches science or nature documentaries" }
+  ]},
+  { q: "Which describes your food taste best?", options: [
+    { label: "Spicy and bold", clue: "likes food that is spicy and bold" },
+    { label: "Classic comfort food", clue: "likes classic comfort food" },
+    { label: "Dessert first", clue: "always saves room for dessert" },
+    { label: "Adventurous dishes from around the world", clue: "likes adventurous dishes from around the world" },
+    { label: "Simple and plain", clue: "prefers simple, plain food" }
+  ]},
+  { q: "What's your go-to kind of holiday?", options: [
+    { label: "A beach resort", clue: "prefers a beach resort holiday" },
+    { label: "A city break", clue: "loves a city break" },
+    { label: "A road trip", clue: "would rather take a road trip" },
+    { label: "Camping in the wilderness", clue: "would rather camp in the wilderness" },
+    { label: "A planned cruise", clue: "prefers a planned cruise" }
+  ]},
+  { q: "What's your pet peeve at a family dinner?", options: [
+    { label: "Phones at the table", clue: "can't stand phones at the table" },
+    { label: "People arriving late", clue: "hates when people arrive late" },
+    { label: "Politics over dessert", clue: "wants politics kept off the table" },
+    { label: "Overcooked food", clue: "can't stand overcooked food" },
+    { label: "Nobody helping with the cleanup", clue: "quietly fumes when nobody helps with the cleanup" }
+  ]},
+  { q: "What's your favorite hobby?", options: [
+    { label: "Gardening", clue: "is a gardener at heart" },
+    { label: "Birdwatching", clue: "keeps a bird list" },
+    { label: "Photography", clue: "always has a camera handy" },
+    { label: "Puzzles", clue: "is never without a jigsaw puzzle" },
+    { label: "Woodworking", clue: "makes things out of wood" }
+  ]},
+  { q: "How do you usually get the news?", options: [
+    { label: "Newspapers or magazines", clue: "gets the news from print" },
+    { label: "TV news", clue: "watches the TV news" },
+    { label: "Podcasts", clue: "listens to podcasts for the news" },
+    { label: "Social media", clue: "gets the news from social media" },
+    { label: "A friend, usually before anyone else", clue: "hears the news from a friend first" }
+  ]}
 ];
-const TEAM_NAMES = ["Team Sage", "Team Clay", "Team Plum", "Team Pine", "Team Gold"];
-const TURN_SECONDS = 60;
+
+// Would You Rather dilemmas for Chapter 3
+const WYR = [
+  { a: "A road trip", b: "A cruise" },
+  { a: "Breakfast for dinner", b: "Dinner for breakfast" },
+  { a: "The beach", b: "The mountains" },
+  { a: "Board games", b: "Movie night" },
+  { a: "Hot cocoa", b: "Iced tea" },
+  { a: "Early bird", b: "Night owl" },
+  { a: "A dance party", b: "A quiet picnic" },
+  { a: "Cook a feast", b: "Order takeout" }
+];
+
+const CHAPTERS = { 1: "Who Is This?", 2: "How Well Do You Know Me?", 3: "Would You Rather", 4: "Showdown" };
+const LADDER_POINTS = [3, 2, 1];   // points for a right guess at clue 1, 2, or 3
+const LADDER_WRONG = -1;           // a wrong ladder guess
+const STEP_MS = 15000;             // each ladder clue appears 15 seconds after the last
+const LADDER_MS = 60000;           // the ladder closes after 60 seconds
 const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
-let G = null;        // { id, code, version, state }
+let G = null;           // { id, code, version, state }
 let isHost = false;
-let me = null;       // this phone's player id
+let me = null;          // this phone's player id
 let channel = null;
 let lastHtml = "";
-let endingTurn = false;
+let draft = [];         // questionnaire answers being chosen on this phone
+let qStep = 0;          // which questionnaire question is showing
+let betDraft = 1;       // bet chosen for the next guess on this phone
+let doubleDraft = false;// whether this phone will use Double on the next vote
+let renderedStep = 0;   // last ladder clue shown on this phone
+let revealing = false;
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const pname = (s, pid) => (s.players.find(p => p.id === pid) || {}).name || "?";
-const teamOf = (s, pid) => s.teams.find(t => t.members.includes(pid));
+const pnum = (s, pid) => (s.players.find(p => p.id === pid) || {}).num;
+const holders = s => s.players.filter(p => p.answers);
+const pts = (s, pid) => (s.players.find(p => p.id === pid) || {}).points || 0;
 
 function shuffle(a){
   for (let i = a.length - 1; i > 0; i--){
@@ -122,7 +224,7 @@ async function refreshGame(){
 }
 
 // Apply a change to the shared state. fn may return false to cancel.
-// Uses a version check so two phones writing at once cannot silently overwrite each other.
+// The version check stops two phones from overwriting each other's changes.
 async function mutate(fn){
   for (let attempt = 0; attempt < 6; attempt++){
     const { data: cur, error } = await sb.from("games").select("*").eq("id", G.id).single();
@@ -140,17 +242,80 @@ async function mutate(fn){
 
 setInterval(refreshGame, 4000); // backup in case realtime drops
 
-/* ---------- game logic helpers ---------- */
+/* ---------- game logic ---------- */
 
-function buildR1(s){
-  return shuffle(Object.entries(s.cards).map(([owner, c]) => ({ owner, text: c.fact })));
+// Who may vote on the current item
+function eligible(s, item){
+  let pool = s.players.filter(p => p.claimed);
+  if (item.ch === 4) pool = pool.filter(p => s.finalists.includes(p.id));
+  if (item.target) pool = pool.filter(p => p.id !== item.target);
+  return pool.map(p => p.id);
 }
-function buildR2(s){
-  const cards = Object.entries(s.cards).flatMap(([owner, c]) => [
-    { owner, text: c.strength, type: "strength" },
-    { owner, text: c.quirk, type: "quirk" }
-  ]);
-  return { order: shuffle(cards), idx: 0, turn: null, turnNo: 0, turnTeam: 0 };
+// Which clue step is showing for a ladder item (1, 2, or 3)
+function ladderStep(s){
+  const elapsed = Date.now() - s.startedAt;
+  return Math.min(3, Math.floor(elapsed / STEP_MS) + 1);
+}
+function secsLeft(s){
+  return Math.max(0, Math.ceil((s.startedAt + LADDER_MS - Date.now()) / 1000));
+}
+function clueFor(s, item, k){
+  const tp = s.players.find(p => p.id === item.target);
+  const qi = item.qs[k];
+  return QUESTIONS[qi].options[tp.answers[qi]].clue;
+}
+function guessAnswer(s, item){
+  return s.players.find(p => p.id === item.target).answers[item.q];
+}
+// Points for one vote on a ladder or guess item (before Double and multiplier)
+function baseDelta(s, item, v){
+  if (item.kind === "ladder"){
+    return v.choice === item.target ? LADDER_POINTS[v.step - 1] : LADDER_WRONG;
+  }
+  const right = v.choice === guessAnswer(s, item);
+  return right ? v.bet : -v.bet;
+}
+// Scores the current item and marks it revealed. Runs inside a mutate().
+function revealItem(s){
+  if (s.revealed) return;
+  s.revealed = true;
+  const item = s.items[s.idx];
+  const votes = Object.entries(s.votes);
+  const base = {};
+  if (item.kind === "wyr"){
+    const c = [0, 0];
+    votes.forEach(([, v]) => c[v.choice] += 1);
+    const majority = c[0] === c[1] ? null : (c[0] > c[1] ? 0 : 1);
+    votes.forEach(([pid, v]) => { base[pid] = majority !== null && v.choice === majority ? 1 : 0; });
+  } else {
+    votes.forEach(([pid, v]) => { base[pid] = baseDelta(s, item, v); });
+  }
+  s.lastDelta = {};
+  votes.forEach(([pid, v]) => {
+    const d = base[pid] * (v.double ? 2 : 1) * (item.mult || 1);
+    const p = s.players.find(x => x.id === pid);
+    p.points = (p.points || 0) + d;
+    s.lastDelta[pid] = d;
+  });
+}
+// Builds the full run of items for all four chapters
+function buildItems(s){
+  const hs = shuffle(holders(s).map(p => p.id));
+  const perms = {};
+  hs.forEach(id => perms[id] = shuffle([...Array(QUESTIONS.length).keys()]));
+  const ch1 = [], ch2 = [];
+  hs.forEach(id => {
+    const pm = perms[id];
+    ch1.push({ ch: 1, kind: "ladder", target: id, qs: pm.slice(0, 3), mult: 1 });
+    ch1.push({ ch: 1, kind: "ladder", target: id, qs: pm.slice(3, 6), mult: 1 });
+    ch2.push({ ch: 2, kind: "guess", target: id, q: pm[6], mult: 1 });
+    ch2.push({ ch: 2, kind: "guess", target: id, q: pm[7], mult: 1 });
+  });
+  const ch3 = shuffle([...Array(WYR.length).keys()]).map(d => ({ ch: 3, kind: "wyr", dilemma: d, mult: 1 }));
+  const ch4 = hs.slice(0, 3).map(id => ({
+    ch: 4, kind: "ladder", target: id, qs: shuffle([...Array(QUESTIONS.length).keys()]).slice(0, 3), mult: 2
+  }));
+  return [...shuffle(ch1), ...shuffle(ch2), ...shuffle(ch3), ...ch4];
 }
 
 /* ---------- rendering ---------- */
@@ -161,7 +326,6 @@ function render(){
     $("app").innerHTML = html;
     lastHtml = html;
   }
-  tick();
 }
 
 function renderHome(){
@@ -172,25 +336,25 @@ function renderHome(){
       <h2>Host a game</h2>
       <label for="names">Player names, one per line (at least 3)</label>
       <textarea id="names" rows="8"></textarea>
-      <button data-act="create">Create game</button>
+      <button class="center-btn" data-act="create">Create game</button>
     </div>
     <div class="card">
       <h2>Join a game</h2>
       <label for="code">Game code</label>
       <input id="code" maxlength="6" autocapitalize="characters" autocomplete="off">
-      <button class="secondary" data-act="join">Join</button>
+      <button class="secondary center-btn" data-act="join">Join</button>
     </div>`;
 }
 
 function renderGame(){
   const s = G.state;
-  const header = `<p class="tag">Game code <strong>${esc(G.code)}</strong> · ${isHost ? "You are the host" : "Player"}</p>`;
+  const who = me ? ` · You are ${esc(pname(s, me))}` : "";
+  const header = `<p class="tag">Game code <strong>${esc(G.code)}</strong>${isHost ? " · host" : ""}${who}</p>`;
   let body = "";
   if (s.phase === "lobby") body = renderLobby(s);
-  else if (s.phase === "entry") body = renderEntry(s);
-  else if (s.phase === "r1") body = renderR1(s);
-  else if (s.phase === "r2") body = renderR2(s);
-  else if (s.phase === "r3") body = renderR3(s);
+  else if (s.phase === "questionnaire") body = renderQuestionnaire(s);
+  else if (s.phase === "play") body = renderPlay(s);
+  else if (s.phase === "break") body = renderBreak(s);
   else if (s.phase === "final") body = renderFinal(s);
   return header + body + `<button class="ghost" data-act="leave">Leave game on this phone</button>`;
 }
@@ -202,147 +366,218 @@ function claimList(s){
     open.map(p => `<button class="secondary" data-act="claim" data-pid="${esc(p.id)}">I'm ${esc(p.name)}</button>`).join("");
 }
 
-function scoreBox(s){
-  return `<div class="card">` + s.teams.map(t =>
-    `<div class="score"><span>${esc(t.name)}<br><span class="muted">${t.members.map(id => esc(pname(s, id))).join(", ")}</span></span><strong>${t.points}</strong></div>`
+function scoresBox(s){
+  const sorted = s.players.slice().sort((a, b) => (b.points || 0) - (a.points || 0));
+  return `<div class="card"><p class="tag">Scores</p>` + sorted.map(p =>
+    `<div class="score"><span>${p.num ? p.num + ". " : ""}${esc(p.name)}</span><strong>${p.points || 0}</strong></div>`
   ).join("") + `</div>`;
 }
 
 function renderLobby(s){
   const list = s.players.map(p =>
     `<li>${esc(p.name)} ${p.claimed ? "✓ joined" : '<span class="muted">not joined yet</span>'}</li>`).join("");
-  const hostPart = isHost
-    ? `<button data-act="start-cards" ${s.players.length < 3 ? "disabled" : ""}>Make teams and start writing cards</button>`
-    : "";
   const meBlock = me
-    ? `<p class="muted">You're in as ${esc(pname(s, me))}. Waiting for the host to start.</p>`
+    ? `<p class="muted">Waiting for everyone to join.</p>`
     : `<h2>Who are you?</h2>${claimList(s)}`;
+  const hostPart = isHost
+    ? `<button class="center-btn" data-act="start-questionnaire" ${s.players.length < 3 ? "disabled" : ""}>Start the questionnaire</button>`
+    : "";
   return `<div class="card"><h2>Lobby</h2><ul class="plist">${list}</ul>${meBlock}${hostPart}</div>`;
 }
 
-function renderEntry(s){
+function questionCard(){
+  const Q = QUESTIONS[qStep];
+  const picked = draft[qStep];
+  const complete = draft.length === QUESTIONS.length && draft.every(v => v !== undefined);
+  const last = qStep === QUESTIONS.length - 1;
+  const opts = Q.options.map((o, oi) =>
+    `<button class="${picked === oi ? "" : "secondary"}" data-act="pick" data-o="${oi}">${esc(o.label)}</button>`).join("");
+  const nav = last
+    ? `<button class="center-btn" data-act="save-answers" ${complete ? "" : "disabled"}>Save my answers</button>`
+    : `<button class="center-btn" data-act="qnext" ${picked === undefined ? "disabled" : ""}>Next</button>`;
+  return `<div class="card">
+    <p class="tag">Questionnaire · ${qStep + 1} of ${QUESTIONS.length}</p>
+    <h2>${esc(Q.q)}</h2>
+    ${opts}
+    <div class="row">
+      <button class="secondary center-btn" data-act="qprev" ${qStep === 0 ? "disabled" : ""}>Back</button>
+      ${nav}
+    </div></div>`;
+}
+
+function renderQuestionnaire(s){
   const total = s.players.length;
-  const done = Object.keys(s.cards).length;
-  const teamLine = me && teamOf(s, me) ? `<p class="muted">Your team: <strong>${esc(teamOf(s, me).name)}</strong></p>` : "";
-  const progress = s.players.map(p =>
-    `<li>${esc(p.name)} ${s.cards[p.id] ? "✓ cards in" : '<span class="muted">still writing</span>'}</li>`).join("");
-  const hostPart = isHost
-    ? `<div class="card"><h2>Writing cards</h2><p class="muted">${done} of ${total} done.</p>
-      <ul class="plist">${progress}</ul>
-      <button data-act="start-r1" ${done < 3 ? "disabled" : ""}>Start Round 1</button></div>`
-    : "";
-  if (!me) return hostPart + `<div class="card"><h2>Who are you?</h2>${claimList(s)}</div>`;
-  if (s.cards[me]) return hostPart + `<div class="card">${teamLine}<h2>Cards saved</h2><p class="muted">Waiting for the host to start Round 1. ${done} of ${total} done.</p></div>`;
-  const formHtml = `<div class="card">${teamLine}
-    <h2>Write your three cards</h2>
-    <p class="muted">Only you see these until the game plays them.</p>
-    <label for="in-strength">A strength (e.g. "I can fix anything with duct tape")</label>
-    <input id="in-strength" maxlength="120">
-    <label for="in-quirk">A quirk (e.g. "I always reorganize the fridge")</label>
-    <input id="in-quirk" maxlength="120">
-    <label for="in-fact">A fact most people don't know</label>
-    <input id="in-fact" maxlength="120">
-    <button data-act="save-cards">Save my cards</button></div>`;
-  return hostPart + formHtml;
-}
-
-function renderR1(s){
-  const r = s.r1;
-  const c = r.order[r.idx];
-  if (!c) return "";
-  let controls = "";
-  if (isHost){
-    controls = !r.revealed
-      ? `<button data-act="reveal">Reveal the author</button>`
-      : s.teams.map((t, i) => `<button class="secondary" data-act="award" data-team="${i}">${esc(t.name)} +1</button>`).join("") +
-        `<button class="ghost" data-act="award" data-team="-1">Nobody guessed</button>`;
-  }
-  const reveal = r.revealed ? `<p class="center">Written by <strong>${esc(pname(s, c.owner))}</strong>. Let them tell the story.</p>` : "";
-  return `<div class="card"><p class="tag">Round 1 · Who Is This? · ${r.idx + 1} of ${r.order.length}</p>
-    <p class="big">“${esc(c.text)}”</p><p class="muted center">Everyone guesses who wrote it.</p>${reveal}${controls}</div>
-    ${scoreBox(s)}`;
-}
-
-function renderR2(s){
-  const r = s.r2;
-  if (r.idx >= r.order.length){
-    return `<div class="card"><p class="big">All cards used!</p>
-      ${isHost ? `<button data-act="finish-r2">Go to the awards</button>` : ""}</div>${scoreBox(s)}`;
-  }
-  const c = r.order[r.idx];
-  const teamIdx = r.turn ? r.turn.team : r.turnTeam;
-  const team = s.teams[teamIdx];
-  const label = c.type === "strength" ? "Strength" : "Quirk";
-  let inner;
-  if (r.turn){
-    const acting = me && team.members.includes(me);
-    const cardText = acting
-      ? `<p class="big">${label}: ${esc(c.text)}</p><p class="muted center">Act it out. Don't say the person's name.</p>`
-      : `<p class="big">${esc(team.name)} is acting.</p><p class="muted center">Guess!</p>`;
-    const id = r.turn.id, idx = r.idx;
-    inner = `<p class="tag">Round 2 · Team Charades · card ${r.idx + 1} of ${r.order.length}</p>
-      ${cardText}
-      <div class="timer" id="timer">${TURN_SECONDS}</div>
-      <div class="row">
-        <button data-act="got" data-id="${id}" data-idx="${idx}">Got it +1</button>
-        <button class="secondary" data-act="pass" data-id="${id}" data-idx="${idx}">Pass</button>
-      </div>`;
+  const done = s.players.filter(p => p.answers).length;
+  let mine;
+  if (!me){
+    mine = `<div class="card"><h2>Who are you?</h2>${claimList(s)}</div>`;
   } else {
-    inner = `<p class="tag">Round 2 · Team Charades</p>
-      <p class="big">${esc(team.name)} is up next.</p>
-      ${isHost ? `<button data-act="start-turn">Start 60-second turn</button>` : `<p class="muted center">Waiting for the host to start the turn.</p>`}`;
+    const p = s.players.find(x => x.id === me);
+    mine = p && p.answers
+      ? `<div class="card"><h2>Answers saved</h2><p class="muted">Waiting for the others. ${done} of ${total} done.</p></div>`
+      : questionCard();
   }
-  return `<div class="card">${inner}</div>${scoreBox(s)}
-    ${isHost ? `<button class="secondary" data-act="finish-r2">Finish round now</button>` : ""}`;
+  const progress = s.players.map(p =>
+    `<li>${esc(p.name)} ${p.answers ? "✓ done" : '<span class="muted">answering</span>'}</li>`).join("");
+  const hostPart = isHost
+    ? `<div class="card"><h2>Questionnaire progress</h2>
+        <p class="muted">${done} of ${total} done. Anyone who hasn't finished sits out the game.</p>
+        <ul class="plist">${progress}</ul>
+        <button class="center-btn" data-act="start-game" ${done < 3 ? "disabled" : ""}>Start the game</button></div>`
+    : "";
+  return mine + hostPart;
 }
 
-function renderR3(s){
-  const r = s.r3;
-  const cat = AWARDS[r.awIdx];
-  const won = r.winners[r.awIdx];
-  let controls = "";
-  if (isHost){
-    if (won === undefined){
-      controls = s.players.map(p =>
-        `<button class="secondary" data-act="pick-winner" data-pid="${esc(p.id)}">${esc(p.name)}</button>`).join("");
-    } else {
-      controls = `<button data-act="next-award">${r.awIdx + 1 < AWARDS.length ? "Next award" : "See final scores"}</button>`;
+function powersLine(s){
+  if (!me) return "";
+  const p = s.players.find(x => x.id === me);
+  if (!p || !p.powers) return "";
+  return `<p class="muted center">Your powers: Double ×${p.powers.double}, Lifeline ×${p.powers.lifeline}</p>`;
+}
+
+function renderPlay(s){
+  const item = s.items[s.idx];
+  const inChapter = s.items.filter(i => i.ch === item.ch);
+  const pos = s.items.slice(0, s.idx + 1).filter(i => i.ch === item.ch).length;
+  const head = `<p class="tag">Chapter ${item.ch} · ${CHAPTERS[item.ch]} · ${pos} of ${inChapter.length}</p>`;
+  const voters = eligible(s, item);
+  const votesIn = voters.filter(id => s.votes[id] !== undefined).length;
+  const myVote = me ? s.votes[me] : undefined;
+  const canVote = !!me && voters.includes(me) && myVote === undefined && !s.revealed;
+  const me_p = me ? s.players.find(x => x.id === me) : null;
+  const doubleLeft = me_p && me_p.powers ? me_p.powers.double : 0;
+  const lifeLeft = me_p && me_p.powers ? me_p.powers.lifeline : 0;
+  const hiddenOpts = (me && s.hidden && s.hidden[me]) || [];
+  let prompt = "", choices = "", extra = "";
+
+  if (item.kind === "ladder"){
+    const step = ladderStep(s);
+    renderedStep = step;
+    const clues = [];
+    for (let k = 0; k < step; k++){
+      clues.push(`<p class="big" style="font-size:20px;padding:6px 0">Clue ${k + 1}: Which person ${esc(clueFor(s, item, k))}?</p>`);
+    }
+    prompt = clues.join("") + `<p class="muted center">Clue ${step} of 3 · <span id="cd">${secsLeft(s)}</span> seconds left</p>
+      <p class="muted center">Right now: ${LADDER_POINTS[step - 1] * item.mult} if right, ${LADDER_WRONG * item.mult} if wrong.</p>`;
+    if (canVote){
+      choices = holders(s).map(p =>
+        `<button class="secondary" data-act="vote" data-v="${esc(p.id)}">${p.num}. ${esc(p.name)}</button>`).join("");
+    }
+  } else if (item.kind === "guess"){
+    const tp = s.players.find(p => p.id === item.target);
+    const Q = QUESTIONS[item.q];
+    prompt = `<p class="tag center">About ${esc(tp.name)}</p><p class="big">${esc(Q.q)}</p>`;
+    if (canVote){
+      const bets = [1, 2, 3].map(b =>
+        `<button class="${betDraft === b ? "" : "secondary"} center-btn" data-act="bet" data-b="${b}">Bet ${b}</button>`).join("");
+      extra = `<div class="row">${bets}</div>`;
+      choices = Q.options.map((o, k) => hiddenOpts.includes(k) ? "" :
+        `<button class="secondary" data-act="vote" data-v="${k}">${k + 1}. ${esc(o.label)}</button>`).join("");
+      if (lifeLeft > 0 && hiddenOpts.length === 0)
+        extra += `<button class="secondary center-btn" data-act="lifeline">Lifeline: remove two wrong answers</button>`;
+    }
+  } else {
+    const d = WYR[item.dilemma];
+    prompt = `<p class="tag center">Would you rather</p><p class="big">${esc(d.a)} or ${esc(d.b)}?</p>`;
+    if (canVote){
+      choices = `<button class="secondary" data-act="vote" data-v="0">A · ${esc(d.a)}</button>
+        <button class="secondary" data-act="vote" data-v="1">B · ${esc(d.b)}</button>`;
     }
   }
-  const result = won !== undefined
-    ? `<p class="final">${esc(pname(s, won))} wins!</p>`
-    : `<p class="muted center">Talk it over. The host taps the winner.</p>`;
-  return `<div class="card"><p class="tag">Round 3 · Family Awards · ${r.awIdx + 1} of ${AWARDS.length}</p>
-    <p class="big">${esc(cat)}</p>${result}${controls}</div>`;
+
+  if (canVote && doubleLeft > 0){
+    extra += `<button class="${doubleDraft ? "" : "secondary"} center-btn" data-act="toggle-double">Double on this vote: ${doubleDraft ? "on" : "off"} (${doubleLeft} left)</button>`;
+  }
+
+  let body;
+  if (canVote){
+    body = extra + choices;
+  } else if (s.revealed){
+    body = revealBlock(s, item);
+  } else if (myVote !== undefined){
+    body = `<p class="muted center">Your pick is in. Waiting for ${voters.length - votesIn} more.</p>`;
+  } else {
+    body = `<p class="muted center">Waiting for ${voters.length - votesIn} more to vote.</p>`;
+  }
+
+  let host = "";
+  if (isHost){
+    if (s.revealed){
+      const last = s.idx + 1 >= s.items.length;
+      const nextIt = s.items[s.idx + 1];
+      const text = last ? "See final scores" : (nextIt && nextIt.ch !== item.ch ? "Finish chapter" : "Next");
+      host = `<button class="center-btn" data-act="next">${text}</button>`;
+    } else {
+      host = `<button class="ghost center-btn" data-act="reveal">Reveal now</button>`;
+    }
+  }
+
+  return `<div class="card">${head}${prompt}${body}${host}</div>${powersLine(s)}${scoresBox(s)}`;
+}
+
+function revealBlock(s, item){
+  let answer;
+  if (item.kind === "ladder"){
+    const tp = s.players.find(p => p.id === item.target);
+    answer = `It was: ${tp.num}. ${tp.name}`;
+  } else if (item.kind === "guess"){
+    answer = `It was: ${QUESTIONS[item.q].options[guessAnswer(s, item)].label}`;
+  } else {
+    const c = [0, 0];
+    Object.values(s.votes).forEach(v => c[v.choice] += 1);
+    const d = WYR[item.dilemma];
+    answer = c[0] === c[1] ? "A tie, so nobody scores" : `Majority: ${c[0] > c[1] ? d.a : d.b}`;
+  }
+  const rows = Object.entries(s.lastDelta || {}).map(([pid, d]) =>
+    `<div class="score"><span>${esc(pname(s, pid))}</span><strong>${d > 0 ? "+" + d : d}</strong></div>`).join("")
+    || `<p class="muted center">No votes this round.</p>`;
+  return `<p class="final">${esc(answer)}</p>${rows}`;
+}
+
+function renderBreak(s){
+  const nextIt = s.items[s.idx];
+  const top = s.players.filter(p => p.answers).slice().sort((a, b) => (b.points || 0) - (a.points || 0)).slice(0, 3);
+  const note = nextIt.ch === 4
+    ? `<p class="muted center">Showdown: the top three by score compete. Right now: ${esc(top.map(p => p.name).join(", "))}</p>`
+    : "";
+  const host = isHost
+    ? `<button class="center-btn" data-act="continue">Start Chapter ${nextIt.ch}: ${esc(CHAPTERS[nextIt.ch])}</button>`
+    : `<p class="muted center">Waiting for the host to start the next chapter.</p>`;
+  return `<div class="card"><p class="tag">Break</p><p class="big">Chapter ${nextIt.ch}: ${esc(CHAPTERS[nextIt.ch])}</p>${note}${host}</div>${scoresBox(s)}`;
 }
 
 function renderFinal(s){
-  const sorted = s.teams.slice().sort((a, b) => b.points - a.points);
-  const tie = sorted.length > 1 && sorted[0].points === sorted[1].points;
-  const awards = AWARDS.map((a, i) => {
-    const w = s.r3 && s.r3.winners[i];
-    return `<p class="muted">${esc(a)}: <strong>${esc(w !== undefined ? pname(s, w) : "nobody")}</strong></p>`;
-  }).join("");
-  return `<div class="card"><div class="final">${tie ? "It's a tie!" : esc(sorted[0].name) + " wins!"}</div></div>
-    ${scoreBox(s)}<div class="card"><h2>Awards</h2>${awards}</div>`;
+  const top = Math.max(...s.players.map(p => p.points || 0));
+  const leaders = s.players.filter(p => (p.points || 0) === top);
+  const headline = leaders.length === 1 ? `${esc(leaders[0].name)} wins!`
+    : "Tie: " + esc(leaders.map(p => p.name).join(" and "));
+  return `<div class="card"><div class="final">${headline}</div><p class="muted center">Final score: ${top}</p></div>
+    ${scoresBox(s)}`;
 }
 
-/* ---------- timer: any phone can close an expired turn ---------- */
+/* ---------- timer: keeps the ladder clock and closes expired ladders ---------- */
 
 function tick(){
-  if (!G || G.state.phase !== "r2" || !G.state.r2 || !G.state.r2.turn) return;
-  const t = G.state.r2.turn;
-  const left = Math.max(0, Math.ceil((t.endsAt - Date.now()) / 1000));
-  const el = $("timer");
-  if (el) el.textContent = left;
-  if (left === 0 && !endingTurn){
-    endingTurn = true;
-    mutate(s => {
-      const r = s.r2;
-      if (!r || !r.turn || r.turn.id !== t.id || Date.now() < r.turn.endsAt) return false;
-      r.turn = null;
-      r.turnTeam = (r.turnTeam + 1) % s.teams.length;
-    }).catch(() => {}).finally(() => { endingTurn = false; });
+  if (!G) return;
+  const s = G.state;
+  if (s.phase !== "play") return;
+  const item = s.items[s.idx];
+  if (!item || item.kind !== "ladder" || s.revealed) return;
+  const cd = $("cd");
+  if (cd) cd.textContent = secsLeft(s);
+  const step = ladderStep(s);
+  if (step !== renderedStep){
+    renderedStep = step;
+    render();
+  }
+  if (Date.now() >= s.startedAt + LADDER_MS && !revealing){
+    revealing = true;
+    mutate(x => {
+      const it = x.items[x.idx];
+      if (x.phase !== "play" || x.revealed || !it || it.kind !== "ladder") return false;
+      if (Date.now() < x.startedAt + LADDER_MS) return false;
+      revealItem(x);
+    }).catch(() => {}).finally(() => { revealing = false; });
   }
 }
 setInterval(tick, 500);
@@ -369,12 +604,11 @@ async function handle(act, b){
       const code = makeCode();
       const state = {
         phase: "lobby",
-        players: names.map((name, i) => ({ id: "p" + i, name, claimed: false })),
-        teams: [], cards: {}
+        players: names.map((name, i) => ({ id: "p" + i, name, claimed: false, num: null, answers: null, points: 0, powers: null })),
+        items: [], idx: 0, startedAt: 0, votes: {}, hidden: {}, revealed: false, lastDelta: {}, finalists: []
       };
       const { error } = await sb.from("games").insert({ code, state, version: 1 });
       if (error) return say("Could not create the game: " + error.message);
-      isHost = true;
       await openGame(code, true);
       return;
     }
@@ -403,111 +637,133 @@ async function handle(act, b){
       } else say("That name was just taken. Pick another.");
       return;
     }
-    case "start-cards": {
+    case "start-questionnaire": {
       if (!isHost) return;
       const ok = await mutate(s => {
         if (s.phase !== "lobby" || s.players.length < 3) return false;
-        const n = Math.max(2, Math.ceil(s.players.length / 4));
-        s.teams = Array.from({ length: n }, (_, i) => ({
-          name: TEAM_NAMES[i] || ("Team " + (i + 1)), members: [], points: 0
-        }));
-        shuffle(s.players.map(p => p.id)).forEach((pid, i) => s.teams[i % n].members.push(pid));
-        s.cards = {};
-        s.phase = "entry";
+        const ids = shuffle(s.players.map(p => p.id));
+        s.players.forEach(p => { p.num = ids.indexOf(p.id) + 1; p.points = 0; p.answers = null; });
+        s.phase = "questionnaire";
       });
-      if (!ok) say("Could not start. Check the player list.");
+      if (ok){ draft = new Array(QUESTIONS.length); qStep = 0; }
       return;
     }
-    case "save-cards": {
-      const strength = $("in-strength").value.trim();
-      const quirk = $("in-quirk").value.trim();
-      const fact = $("in-fact").value.trim();
-      if (!strength || !quirk || !fact) return say("Please fill in all three cards.");
+    case "pick": {
+      draft[qStep] = Number(b.dataset.o);
+      return;
+    }
+    case "qnext": {
+      qStep = Math.min(QUESTIONS.length - 1, qStep + 1);
+      return;
+    }
+    case "qprev": {
+      qStep = Math.max(0, qStep - 1);
+      return;
+    }
+    case "save-answers": {
+      if (draft.length !== QUESTIONS.length || draft.some(v => v === undefined)) return say("Please answer every question.");
+      const answers = [...draft];
       await mutate(s => {
-        if (s.phase !== "entry") return false;
-        s.cards[me] = { strength, quirk, fact };
+        const p = s.players.find(x => x.id === me);
+        if (!p || p.answers || s.phase !== "questionnaire") return false;
+        p.answers = answers;
       });
       return;
     }
-    case "start-r1": {
+    case "start-game": {
       if (!isHost) return;
       const ok = await mutate(s => {
-        if (s.phase !== "entry" || Object.keys(s.cards).length < 3) return false;
-        s.r1 = { order: buildR1(s), idx: 0, revealed: false };
-        s.phase = "r1";
+        if (s.phase !== "questionnaire") return false;
+        if (holders(s).length < 3) return false;
+        s.players.forEach(p => { p.powers = { double: 1, lifeline: 1 }; p.points = 0; });
+        s.items = buildItems(s);
+        s.idx = 0;
+        s.phase = "play";
+        s.votes = {};
+        s.hidden = {};
+        s.revealed = false;
+        s.lastDelta = {};
+        s.finalists = [];
+        s.startedAt = Date.now();
       });
-      if (!ok) say("Round 1 needs at least 3 people's cards.");
+      if (!ok) say("At least 3 players need to finish the questionnaire.");
+      return;
+    }
+    case "bet": {
+      betDraft = Number(b.dataset.b);
+      return;
+    }
+    case "toggle-double": {
+      doubleDraft = !doubleDraft;
+      return;
+    }
+    case "lifeline": {
+      await mutate(s => {
+        const item = s.items[s.idx];
+        if (s.phase !== "play" || s.revealed || !me || !item || item.kind !== "guess") return false;
+        const p = s.players.find(x => x.id === me);
+        if (!p || !p.powers || p.powers.lifeline < 1 || s.votes[me] !== undefined || s.hidden[me]) return false;
+        const correct = guessAnswer(s, item);
+        const wrong = shuffle([0, 1, 2, 3, 4].filter(k => k !== correct));
+        s.hidden[me] = wrong.slice(0, 2);
+        p.powers.lifeline -= 1;
+      });
+      return;
+    }
+    case "vote": {
+      const raw = b.dataset.v;
+      await mutate(s => {
+        if (s.phase !== "play" || s.revealed || !me) return false;
+        const item = s.items[s.idx];
+        if (!item || s.votes[me] !== undefined || !eligible(s, item).includes(me)) return false;
+        const p = s.players.find(x => x.id === me);
+        const v = {};
+        if (item.kind === "ladder"){ v.choice = raw; v.step = ladderStep(s); }
+        else if (item.kind === "guess"){ v.choice = Number(raw); v.bet = betDraft; }
+        else { v.choice = Number(raw); }
+        if (doubleDraft && p.powers && p.powers.double > 0){ v.double = true; p.powers.double -= 1; }
+        s.votes[me] = v;
+        if (eligible(s, item).every(id => s.votes[id] !== undefined)) revealItem(s);
+      });
+      doubleDraft = false;
       return;
     }
     case "reveal": {
+      if (!isHost) return;
       await mutate(s => {
-        if (!s.r1) return false;
-        s.r1.revealed = true;
+        if (s.phase !== "play" || s.revealed) return false;
+        revealItem(s);
       });
       return;
     }
-    case "award": {
-      const team = Number(b.dataset.team);
+    case "next": {
+      if (!isHost) return;
       await mutate(s => {
-        const r = s.r1;
-        if (!r || !r.revealed) return false;
-        if (team >= 0) s.teams[team].points += 1;
-        r.idx += 1;
-        r.revealed = false;
-        if (r.idx >= r.order.length){
-          s.phase = "r2";
-          s.r2 = buildR2(s);
+        if (s.phase !== "play" || !s.revealed) return false;
+        const cur = s.items[s.idx];
+        if (s.idx + 1 >= s.items.length){ s.phase = "final"; return; }
+        s.idx += 1;
+        s.votes = {};
+        s.hidden = {};
+        s.revealed = false;
+        s.lastDelta = {};
+        if (s.items[s.idx].ch !== cur.ch){ s.phase = "break"; return; }
+        s.startedAt = Date.now();
+      });
+      return;
+    }
+    case "continue": {
+      if (!isHost) return;
+      await mutate(s => {
+        if (s.phase !== "break") return false;
+        const next = s.items[s.idx];
+        if (next.ch === 4){
+          s.finalists = shuffle(holders(s).map(p => p.id))
+            .sort((a, b) => pts(s, b) - pts(s, a))
+            .slice(0, 3);
         }
-      });
-      return;
-    }
-    case "start-turn": {
-      if (!isHost) return;
-      await mutate(s => {
-        const r = s.r2;
-        if (!r || r.turn || r.idx >= r.order.length) return false;
-        r.turnNo += 1;
-        r.turn = { id: r.turnNo, team: r.turnTeam, endsAt: Date.now() + TURN_SECONDS * 1000 };
-      });
-      return;
-    }
-    case "got":
-    case "pass": {
-      const id = Number(b.dataset.id), idx = Number(b.dataset.idx);
-      await mutate(s => {
-        const r = s.r2;
-        if (!r || !r.turn || r.turn.id !== id || r.idx !== idx || Date.now() >= r.turn.endsAt) return false;
-        if (act === "got") s.teams[r.turn.team].points += 1;
-        r.idx += 1;
-        if (r.idx >= r.order.length) r.turn = null;
-      });
-      return;
-    }
-    case "finish-r2": {
-      if (!isHost) return;
-      await mutate(s => {
-        if (s.phase !== "r2") return false;
-        s.phase = "r3";
-        s.r3 = { awIdx: 0, winners: {} };
-      });
-      return;
-    }
-    case "pick-winner": {
-      if (!isHost) return;
-      const pid = b.dataset.pid;
-      await mutate(s => {
-        if (!s.r3) return false;
-        s.r3.winners[s.r3.awIdx] = pid;
-      });
-      return;
-    }
-    case "next-award": {
-      if (!isHost) return;
-      await mutate(s => {
-        const r = s.r3;
-        if (!r || r.winners[r.awIdx] === undefined) return false;
-        r.awIdx += 1;
-        if (r.awIdx >= AWARDS.length) s.phase = "final";
+        s.phase = "play";
+        s.startedAt = Date.now();
       });
       return;
     }
