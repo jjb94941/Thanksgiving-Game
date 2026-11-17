@@ -43,93 +43,98 @@ ul.plist li{padding:6px 0;border-bottom:1px solid #eee}
 <script>
 const sb = supabase.createClient(FFG_CONFIG.SUPABASE_URL, FFG_CONFIG.SUPABASE_KEY);
 
-// Twelve questions. Each option has a "clue" that completes "Which person ___?"
+// Twelve questions, written for players of any age from about 13 up.
+// Players may pick several options, or "None of the above" (added automatically as the last option).
+// Each option's "clue" completes the sentence "Which person ___?"
 const QUESTIONS = [
-  { q: "What does your ideal free Saturday look like?", options: [
-    { label: "Outdoors: hiking, gardening, or the beach", clue: "would rather spend a free Saturday outdoors" },
-    { label: "Indoors with a book, a film, or a puzzle", clue: "would rather spend a free Saturday indoors with a book, film, or puzzle" },
-    { label: "Cooking, baking, or hosting friends", clue: "spends free Saturdays cooking or hosting" },
-    { label: "Sports, games, or a physical challenge", clue: "is happiest competing at a sport or game" },
-    { label: "Exploring a city, a museum, or the shops", clue: "loves exploring a city, a museum, or the shops" }
+  { q: "What do you most like to do on a free weekend?", options: [
+    { label: "Get outside: hike, bike, or go to the beach", clue: "would rather spend a free weekend outdoors" },
+    { label: "Read, watch something, or play games", clue: "would rather spend a free weekend reading, watching, or gaming" },
+    { label: "Cook, bake, or hang out with friends", clue: "loves cooking, baking, or hanging out with friends" },
+    { label: "Play or watch a sport", clue: "is happiest playing or watching a sport" },
+    { label: "Go somewhere new or go shopping", clue: "loves going somewhere new or going shopping" }
   ]},
-  { q: "Where did you grow up?", options: [
-    { label: "A big city", clue: "grew up in a big city" },
-    { label: "A suburb", clue: "grew up in a suburb" },
-    { label: "A small town", clue: "grew up in a small town" },
-    { label: "A farm or the countryside", clue: "grew up on a farm or in the countryside" },
-    { label: "Outside the country", clue: "grew up outside the country" }
+  { q: "Where have you lived most of your life?", options: [
+    { label: "A big city", clue: "has lived mostly in a big city" },
+    { label: "A suburb", clue: "has lived mostly in a suburb" },
+    { label: "A small town", clue: "has lived mostly in a small town" },
+    { label: "The countryside", clue: "has lived mostly in the countryside" },
+    { label: "Several places over the years", clue: "has moved around a lot over the years" }
   ]},
-  { q: "What kind of work have you done most?", options: [
-    { label: "Hands-on trades or fixing things", clue: "has spent a career working with their hands" },
-    { label: "Office, business, or finance", clue: "has spent a career in an office or in business" },
-    { label: "Teaching, medicine, or caring for others", clue: "has spent a career caring for or teaching others" },
-    { label: "Arts, media, or design", clue: "has spent a career in the arts or design" },
-    { label: "Mostly retired or at home", clue: "is retired or mostly at home these days" }
+  { q: "Which school subject do you like most, or would most like to learn?", options: [
+    { label: "Math or science", clue: "loves math or science" },
+    { label: "English or history", clue: "loves English or history" },
+    { label: "Art, music, or design", clue: "loves art, music, or design" },
+    { label: "Languages", clue: "loves learning languages" },
+    { label: "Something hands-on, like building or cooking", clue: "loves anything hands-on, like building or cooking" }
   ]},
-  { q: "Which music do you reach for most?", options: [
-    { label: "Classical or opera", clue: "reaches for classical music or opera" },
-    { label: "Jazz or blues", clue: "reaches for jazz or blues" },
-    { label: "Rock, pop, or country", clue: "reaches for rock, pop, or country" },
-    { label: "Podcasts or audiobooks instead", clue: "would rather listen to podcasts or audiobooks than music" },
-    { label: "Whatever is on the radio", clue: "lets the radio choose the music" }
+  { q: "Which music do you listen to most?", options: [
+    { label: "Pop", clue: "listens to pop the most" },
+    { label: "Hip-hop or rap", clue: "listens to hip-hop or rap the most" },
+    { label: "Rock or metal", clue: "listens to rock or metal the most" },
+    { label: "Classical or jazz", clue: "listens to classical or jazz the most" },
+    { label: "Podcasts or audiobooks instead", clue: "would rather listen to podcasts than music" }
   ]},
-  { q: "Which holiday tradition matters most to you?", options: [
-    { label: "Cooking the main dish", clue: "cares most about cooking the main dish" },
-    { label: "The parade, the football game, or a movie", clue: "is in charge of the parade, the game, or the movie" },
-    { label: "Board games or cards after dinner", clue: "wants board games or cards after dinner" },
-    { label: "A long walk before the meal", clue: "always insists on a walk before the meal" },
-    { label: "Calling relatives who couldn't come", clue: "makes the calls to relatives who couldn't come" }
+  { q: "What's the best part of a holiday?", options: [
+    { label: "The food", clue: "says the food is the best part of a holiday" },
+    { label: "Time with family", clue: "says time with family is the best part of a holiday" },
+    { label: "Games and movies together", clue: "loves the games and movies together" },
+    { label: "Getting outside, like a walk or a snowball fight", clue: "loves getting outside on a holiday" },
+    { label: "The presents", clue: "says the presents are the best part" }
   ]},
   { q: "What are people most likely to ask you for help with?", options: [
+    { label: "Homework or studying", clue: "is the one people ask for homework help" },
     { label: "Fixing or building something", clue: "is the one people ask to fix or build something" },
-    { label: "Directions, planning, or travel", clue: "is the one people ask to plan a trip" },
-    { label: "Numbers, taxes, or money", clue: "is the one people ask about money or numbers" },
     { label: "Technology or gadgets", clue: "is the one people ask about technology" },
-    { label: "Recipes and cooking advice", clue: "is the one people ask for recipes" }
+    { label: "Cooking or recipes", clue: "is the one people ask for recipes" },
+    { label: "Friend problems or advice", clue: "is the one friends come to for advice" }
   ]},
   { q: "What do you read or watch most?", options: [
-    { label: "Thrillers or mysteries", clue: "reads thrillers or mysteries" },
-    { label: "History or biographies", clue: "reads history or biographies" },
-    { label: "Fantasy or science fiction", clue: "reads fantasy or science fiction" },
-    { label: "Comedy or light entertainment", clue: "watches comedy and light entertainment" },
-    { label: "Science or nature documentaries", clue: "watches science or nature documentaries" }
+    { label: "Mysteries or thrillers", clue: "reads or watches mysteries and thrillers most" },
+    { label: "Fantasy or sci-fi", clue: "reads or watches fantasy and sci-fi most" },
+    { label: "Comedy", clue: "watches comedy most" },
+    { label: "Nature or science shows", clue: "watches nature or science shows most" },
+    { label: "Animated shows", clue: "watches animated shows most" }
   ]},
   { q: "Which describes your food taste best?", options: [
     { label: "Spicy and bold", clue: "likes food that is spicy and bold" },
     { label: "Classic comfort food", clue: "likes classic comfort food" },
-    { label: "Dessert first", clue: "always saves room for dessert" },
-    { label: "Adventurous dishes from around the world", clue: "likes adventurous dishes from around the world" },
+    { label: "Something sweet first", clue: "always saves room for dessert" },
+    { label: "Foods from around the world", clue: "likes foods from around the world" },
     { label: "Simple and plain", clue: "prefers simple, plain food" }
   ]},
-  { q: "What's your go-to kind of holiday?", options: [
-    { label: "A beach resort", clue: "prefers a beach resort holiday" },
-    { label: "A city break", clue: "loves a city break" },
-    { label: "A road trip", clue: "would rather take a road trip" },
-    { label: "Camping in the wilderness", clue: "would rather camp in the wilderness" },
-    { label: "A planned cruise", clue: "prefers a planned cruise" }
+  { q: "Where would you most like to go on a trip?", options: [
+    { label: "A beach", clue: "would pick a beach trip" },
+    { label: "A theme park", clue: "would pick a theme park" },
+    { label: "A road trip", clue: "would pick a road trip" },
+    { label: "Camping in the woods", clue: "would pick camping in the woods" },
+    { label: "Visiting family or friends", clue: "would pick visiting family or friends" }
   ]},
-  { q: "What's your pet peeve at a family dinner?", options: [
-    { label: "Phones at the table", clue: "can't stand phones at the table" },
-    { label: "People arriving late", clue: "hates when people arrive late" },
-    { label: "Politics over dessert", clue: "wants politics kept off the table" },
-    { label: "Overcooked food", clue: "can't stand overcooked food" },
-    { label: "Nobody helping with the cleanup", clue: "quietly fumes when nobody helps with the cleanup" }
+  { q: "What bugs you most at a family dinner?", options: [
+    { label: "Phones at the table", clue: "is bugged most by phones at the table" },
+    { label: "People arriving late", clue: "is bugged most by people arriving late" },
+    { label: "Loud arguments", clue: "can't stand loud arguments at dinner" },
+    { label: "Cold or overcooked food", clue: "can't stand cold or overcooked food" },
+    { label: "Nobody helping with the cleanup", clue: "is bugged most when nobody helps clean up" }
   ]},
   { q: "What's your favorite hobby?", options: [
-    { label: "Gardening", clue: "is a gardener at heart" },
-    { label: "Birdwatching", clue: "keeps a bird list" },
-    { label: "Photography", clue: "always has a camera handy" },
-    { label: "Puzzles", clue: "is never without a jigsaw puzzle" },
-    { label: "Woodworking", clue: "makes things out of wood" }
+    { label: "Drawing, painting, or crafts", clue: "loves drawing, painting, or crafts" },
+    { label: "Playing music or an instrument", clue: "plays music or an instrument" },
+    { label: "Gaming", clue: "loves gaming" },
+    { label: "Sports or fitness", clue: "loves sports or fitness" },
+    { label: "Gardening, animals, or nature", clue: "loves gardening, animals, or nature" }
   ]},
-  { q: "How do you usually get the news?", options: [
-    { label: "Newspapers or magazines", clue: "gets the news from print" },
-    { label: "TV news", clue: "watches the TV news" },
-    { label: "Podcasts", clue: "listens to podcasts for the news" },
-    { label: "Social media", clue: "gets the news from social media" },
-    { label: "A friend, usually before anyone else", clue: "hears the news from a friend first" }
+  { q: "How do you usually find out what's going on in the world?", options: [
+    { label: "TV or videos", clue: "finds out what's going on mostly from TV or videos" },
+    { label: "Social media", clue: "finds out what's going on mostly from social media" },
+    { label: "Podcasts or the radio", clue: "finds out what's going on mostly from podcasts or the radio" },
+    { label: "A newspaper or a website", clue: "finds out what's going on mostly from a newspaper or a website" },
+    { label: "Friends or family", clue: "hears about what's going on from friends or family first" }
   ]}
 ];
+
+const NONE_LABEL = "None of the above";
+const NONE_CLUE = "says none of the usual options fit them";
 
 // Would You Rather dilemmas for Chapter 3
 const WYR = [
@@ -149,7 +154,7 @@ const LADDER_WRONG = -1;           // a wrong ladder guess
 const STEP_MS = 15000;             // each ladder clue appears 15 seconds after the last
 const LADDER_MS = 60000;           // the ladder closes after 60 seconds
 const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-const APP_VERSION = "4.0.0";
+const APP_VERSION = "4.1.0";
 const APP_BUILD = "2026-11-17";
 document.getElementById("version").textContent = "Family Field Guide v" + APP_VERSION + " · build " + APP_BUILD;
 
@@ -158,7 +163,7 @@ let isHost = false;
 let me = null;          // this phone's player id
 let channel = null;
 let lastHtml = "";
-let draft = [];         // questionnaire answers being chosen on this phone
+let draft = [];         // questionnaire answers being chosen on this phone (one array of picks per question)
 let qStep = 0;          // which questionnaire question is showing
 let betDraft = 1;       // bet chosen for the next guess on this phone
 let doubleDraft = false;// whether this phone will use Double on the next vote
@@ -172,6 +177,13 @@ const pnum = (s, pid) => (s.players.find(p => p.id === pid) || {}).num;
 const holders = s => s.players.filter(p => p.answers);
 const pts = (s, pid) => (s.players.find(p => p.id === pid) || {}).points || 0;
 
+// True only when every question has at least one pick. Checks each index, so empty slots count as unanswered.
+function allAnswered(d){
+  for (let i = 0; i < QUESTIONS.length; i++){
+    if (!Array.isArray(d[i]) || d[i].length === 0) return false;
+  }
+  return true;
+}
 function shuffle(a){
   for (let i = a.length - 1; i > 0; i--){
     const j = Math.floor(Math.random() * (i + 1));
@@ -264,21 +276,29 @@ function ladderStep(s){
 function secsLeft(s){
   return Math.max(0, Math.ceil((s.startedAt + LADDER_MS - Date.now()) / 1000));
 }
+// The clue text for step k of a ladder. opts[k] is the option the target picked (or "none").
 function clueFor(s, item, k){
-  const tp = s.players.find(p => p.id === item.target);
-  const qi = item.qs[k];
-  return QUESTIONS[qi].options[tp.answers[qi]].clue;
+  const qi = item.qs[k], opt = item.opts[k];
+  if (opt === QUESTIONS[qi].options.length) return NONE_CLUE;
+  return QUESTIONS[qi].options[opt].clue;
 }
+// Labels for a guess question, including "None of the above" as the last choice
+function guessLabels(qi){
+  return [...QUESTIONS[qi].options.map(o => o.label), NONE_LABEL];
+}
+// The option indexes the target picked for a guess item (one or more)
 function guessAnswer(s, item){
   return s.players.find(p => p.id === item.target).answers[item.q];
+}
+function guessCorrect(s, item, choice){
+  return guessAnswer(s, item).includes(choice);
 }
 // Points for one vote on a ladder or guess item (before Double and multiplier)
 function baseDelta(s, item, v){
   if (item.kind === "ladder"){
     return v.choice === item.target ? LADDER_POINTS[v.step - 1] : LADDER_WRONG;
   }
-  const right = v.choice === guessAnswer(s, item);
-  return right ? v.bet : -v.bet;
+  return guessCorrect(s, item, v.choice) ? v.bet : -v.bet;
 }
 // Scores the current item and marks it revealed. Runs inside a mutate().
 function revealItem(s){
@@ -303,6 +323,11 @@ function revealItem(s){
     s.lastDelta[pid] = d;
   });
 }
+// One option the target picked for a question, chosen at random when the game starts
+function pickOpt(s, target, qi){
+  const sel = s.players.find(p => p.id === target).answers[qi];
+  return sel[Math.floor(Math.random() * sel.length)];
+}
 // Builds the full run of items for all four chapters
 function buildItems(s){
   const hs = shuffle(holders(s).map(p => p.id));
@@ -311,15 +336,17 @@ function buildItems(s){
   const ch1 = [], ch2 = [];
   hs.forEach(id => {
     const pm = perms[id];
-    ch1.push({ ch: 1, kind: "ladder", target: id, qs: pm.slice(0, 3), mult: 1 });
-    ch1.push({ ch: 1, kind: "ladder", target: id, qs: pm.slice(3, 6), mult: 1 });
+    const a = pm.slice(0, 3), b = pm.slice(3, 6);
+    ch1.push({ ch: 1, kind: "ladder", target: id, qs: a, opts: a.map(qi => pickOpt(s, id, qi)), mult: 1 });
+    ch1.push({ ch: 1, kind: "ladder", target: id, qs: b, opts: b.map(qi => pickOpt(s, id, qi)), mult: 1 });
     ch2.push({ ch: 2, kind: "guess", target: id, q: pm[6], mult: 1 });
     ch2.push({ ch: 2, kind: "guess", target: id, q: pm[7], mult: 1 });
   });
   const ch3 = shuffle([...Array(WYR.length).keys()]).map(d => ({ ch: 3, kind: "wyr", dilemma: d, mult: 1 }));
-  const ch4 = hs.slice(0, 3).map(id => ({
-    ch: 4, kind: "ladder", target: id, qs: shuffle([...Array(QUESTIONS.length).keys()]).slice(0, 3), mult: 2
-  }));
+  const ch4 = hs.slice(0, 3).map(id => {
+    const qs = shuffle([...Array(QUESTIONS.length).keys()]).slice(0, 3);
+    return { ch: 4, kind: "ladder", target: id, qs, opts: qs.map(qi => pickOpt(s, id, qi)), mult: 2 };
+  });
   return [...shuffle(ch1), ...shuffle(ch2), ...shuffle(ch3), ...ch4];
 }
 
@@ -392,17 +419,20 @@ function renderLobby(s){
 
 function questionCard(){
   const Q = QUESTIONS[qStep];
-  const picked = draft[qStep];
-  const complete = draft.length === QUESTIONS.length && draft.every(v => v !== undefined);
+  const none = Q.options.length;
+  const sel = draft[qStep] || [];
+  const complete = allAnswered(draft);
   const last = qStep === QUESTIONS.length - 1;
   const opts = Q.options.map((o, oi) =>
-    `<button class="${picked === oi ? "" : "secondary"}" data-act="pick" data-o="${oi}">${esc(o.label)}</button>`).join("");
+    `<button class="${sel.includes(oi) ? "" : "secondary"}" data-act="toggle" data-o="${oi}">${sel.includes(oi) ? "✓ " : ""}${esc(o.label)}</button>`).join("")
+    + `<button class="${sel.includes(none) ? "" : "secondary"}" data-act="toggle" data-o="none">${sel.includes(none) ? "✓ " : ""}${NONE_LABEL}</button>`;
   const nav = last
     ? `<button class="center-btn" data-act="save-answers" ${complete ? "" : "disabled"}>Save my answers</button>`
-    : `<button class="center-btn" data-act="qnext" ${picked === undefined ? "disabled" : ""}>Next</button>`;
+    : `<button class="center-btn" data-act="qnext" ${sel.length === 0 ? "disabled" : ""}>Next</button>`;
   return `<div class="card">
     <p class="tag">Questionnaire · ${qStep + 1} of ${QUESTIONS.length}</p>
     <h2>${esc(Q.q)}</h2>
+    <p class="muted">Tap every answer that fits you. "None of the above" clears the others.</p>
     ${opts}
     <div class="row">
       <button class="secondary center-btn" data-act="qprev" ${qStep === 0 ? "disabled" : ""}>Back</button>
@@ -470,16 +500,16 @@ function renderPlay(s){
     }
   } else if (item.kind === "guess"){
     const tp = s.players.find(p => p.id === item.target);
-    const Q = QUESTIONS[item.q];
-    prompt = `<p class="tag center">About ${esc(tp.name)}</p><p class="big">${esc(Q.q)}</p>`;
+    prompt = `<p class="tag center">About ${esc(tp.name)}</p><p class="big">${esc(QUESTIONS[item.q].q)}</p>
+      <p class="muted center">Which answer did ${esc(tp.name)} pick? Their answer may be more than one.</p>`;
     if (canVote){
       const bets = [1, 2, 3].map(b =>
         `<button class="${betDraft === b ? "" : "secondary"} center-btn" data-act="bet" data-b="${b}">Bet ${b}</button>`).join("");
       extra = `<div class="row">${bets}</div>`;
-      choices = Q.options.map((o, k) => hiddenOpts.includes(k) ? "" :
-        `<button class="secondary" data-act="vote" data-v="${k}">${k + 1}. ${esc(o.label)}</button>`).join("");
+      choices = guessLabels(item.q).map((lab, k) => hiddenOpts.includes(k) ? "" :
+        `<button class="secondary" data-act="vote" data-v="${k}">${k + 1}. ${esc(lab)}</button>`).join("");
       if (lifeLeft > 0 && hiddenOpts.length === 0)
-        extra += `<button class="secondary center-btn" data-act="lifeline">Lifeline: remove two wrong answers</button>`;
+        extra += `<button class="secondary center-btn" data-act="lifeline">Lifeline: remove up to two wrong answers</button>`;
     }
   } else {
     const d = WYR[item.dilemma];
@@ -526,7 +556,8 @@ function revealBlock(s, item){
     const tp = s.players.find(p => p.id === item.target);
     answer = `It was: ${tp.num}. ${tp.name}`;
   } else if (item.kind === "guess"){
-    answer = `It was: ${QUESTIONS[item.q].options[guessAnswer(s, item)].label}`;
+    const labels = guessLabels(item.q);
+    answer = `It was: ${guessAnswer(s, item).map(k => labels[k]).join(" and ")}`;
   } else {
     const c = [0, 0];
     Object.values(s.votes).forEach(v => c[v.choice] += 1);
@@ -653,8 +684,18 @@ async function handle(act, b){
       if (ok){ draft = new Array(QUESTIONS.length); qStep = 0; }
       return;
     }
-    case "pick": {
-      draft[qStep] = Number(b.dataset.o);
+    case "toggle": {
+      // Tapping an option adds or removes it. "None of the above" clears the others, and any option clears "None".
+      const none = QUESTIONS[qStep].options.length;
+      const o = b.dataset.o === "none" ? none : Number(b.dataset.o);
+      let sel = (draft[qStep] || []).slice();
+      if (o === none){
+        sel = sel.includes(none) ? [] : [none];
+      } else {
+        sel = sel.filter(x => x !== none);
+        sel = sel.includes(o) ? sel.filter(x => x !== o) : [...sel, o];
+      }
+      draft[qStep] = sel.sort((x, y) => x - y);
       return;
     }
     case "qnext": {
@@ -666,8 +707,8 @@ async function handle(act, b){
       return;
     }
     case "save-answers": {
-      if (draft.length !== QUESTIONS.length || draft.some(v => v === undefined)) return say("Please answer every question.");
-      const answers = [...draft];
+      if (!allAnswered(draft)) return say("Please answer every question.");
+      const answers = draft.map(v => [...v]);
       await mutate(s => {
         const p = s.players.find(x => x.id === me);
         if (!p || p.answers || s.phase !== "questionnaire") return false;
@@ -709,7 +750,8 @@ async function handle(act, b){
         const p = s.players.find(x => x.id === me);
         if (!p || !p.powers || p.powers.lifeline < 1 || s.votes[me] !== undefined || s.hidden[me]) return false;
         const correct = guessAnswer(s, item);
-        const wrong = shuffle([0, 1, 2, 3, 4].filter(k => k !== correct));
+        const everyChoice = [...Array(QUESTIONS[item.q].options.length + 1).keys()];
+        const wrong = shuffle(everyChoice.filter(k => !correct.includes(k)));
         s.hidden[me] = wrong.slice(0, 2);
         p.powers.lifeline -= 1;
       });
