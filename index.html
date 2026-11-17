@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Family Field Guide</title>
+<style>
+:root{--bg:#fbf6ef;--ink:#2b2118;--accent:#b5562b;--card:#fff;--muted:#7a6a5c;--err:#a11b1b}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;padding:env(safe-area-inset-top) 16px env(safe-area-inset-bottom)}
+main{max-width:480px;margin:0 auto;padding:16px 0 40px}
+h1{font-size:26px;margin:8px 0 4px}
+h2{font-size:20px;margin:6px 0}
+.card{background:var(--card);border-radius:14px;padding:18px;box-shadow:0 2px 8px rgba(0,0,0,.08);margin:12px 0}
+button{font:inherit;font-size:18px;border:0;border-radius:12px;padding:14px 18px;background:var(--accent);color:#fff;width:100%;margin:6px 0;cursor:pointer}
+button.secondary{background:#e9dfd3;color:var(--ink)}
+button.ghost{background:transparent;color:var(--accent);border:2px solid var(--accent)}
+button:disabled{opacity:.4;cursor:default}
+textarea,input{width:100%;font:inherit;font-size:17px;padding:12px;border:2px solid #d9cbbb;border-radius:10px;background:#fff;margin:6px 0 12px}
+label{display:block;color:var(--muted);font-size:15px;margin-top:4px}
+.muted{color:var(--muted);font-size:15px;margin:6px 0}
+.center{text-align:center}
+.tag{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 6px}
+.big{font-size:28px;font-weight:700;text-align:center;padding:22px 8px;line-height:1.25;word-wrap:break-word}
+.timer{font-size:56px;font-weight:700;text-align:center;font-variant-numeric:tabular-nums;color:var(--accent)}
+.final{font-size:24px;font-weight:700;text-align:center;margin:12px 0}
+.score{display:flex;justify-content:space-between;align-items:center;font-size:18px;padding:8px 0;border-bottom:1px solid #eee}
+.row{display:flex;gap:8px}
+.row>button{flex:1}
+ul.plist{list-style:none;padding:0;margin:0 0 8px}
+ul.plist li{padding:6px 0;border-bottom:1px solid #eee}
+#flash{color:var(--err);min-height:1.3em;font-size:15px;text-align:center}
+</style>
+</head>
+<body>
+<main id="app"><p class="muted">Loading…</p></main>
+<p id="flash"></p>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script>
+const sb = supabase.createClient(FFG_CONFIG.SUPABASE_URL, FFG_CONFIG.SUPABASE_KEY);
+
+const AWARDS = [
+  "Most likely to fix it without being asked",
+  "Most likely to reorganize the fridge",
+  "Best story nobody believes",
+  "Most likely to win a board game",
+  "Most likely to ask for the recipe",
+  "Most likely to fall asleep first after dinner"
+];
+const TEAM_NAMES = ["Team Sage", "Team Clay", "Team Plum", "Team Pine", "Team Gold"];
+const TURN_SECONDS = 60;
+const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+let G = null;        // { id, code, version, state }
+let isHost = false;
+let me = null;       // this phone's player id
+let channel = null;
+let lastHtml = "";
+let endingTurn = false;
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pname = (s, pid) => (s.players.find(p => p.id === pid) || {}).name || "?";
+const teamOf = (s, pid) => s.teams.find(t => t.members.includes(pid));
+
+function shuffle(a){
+  for (let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function makeCode(){
+  let c = "";
+  for (let i = 0; i < 6; i++) c += CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)];
+  return c;
+}
+function say(text){
+  $("flash").textContent = text;
+  setTimeout(() => { if ($("flash").textContent === text) $("flash").textContent = ""; }, 4000);
+}
+function ident(code){ try { return JSON.parse(localStorage.getItem("ffg:" + code) || "{}"); } catch(e){ return {}; } }
+function saveIdent(code, obj){ localStorage.setItem("ffg:" + code, JSON.stringify(obj)); }
+
+/* ---------- data layer ---------- */
+
+async function openGame(code, host){
+  const { data, error } = await sb.from("games").select("*").eq("code", code.trim().toUpperCase()).maybeSingle();
+  if (error || !data){ say("No game found with that code."); return false; }
+  G = { id: data.id, code: data.code, version: data.version, state: data.state };
+  const id = ident(G.code);
+  isHost = host || !!id.host;
+  me = id.me || null;
+  saveIdent(G.code, { ...id, host: isHost });
+  subscribe();
+  history.replaceState(null, "", "?code=" + G.code);
+  render();
+  return true;
+}
+
+function subscribe(){
+  if (channel) sb.removeChannel(channel);
+  channel = sb.channel("game-" + G.id)
+    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "games", filter: "id=eq." + G.id },
+        payload => applyRow(payload.new))
+    .subscribe();
+}
+
+function applyRow(row){
+  if (!G || row.id !== G.id || row.version <= G.version) return;
+  G.version = row.version;
+  G.state = row.state;
+  render();
+}
+
+async function refreshGame(){
+  if (!G) return;
+  const { data } = await sb.from("games").select("*").eq("id", G.id).maybeSingle();
+  if (data) applyRow(data);
+}
+
+// Apply a change to the shared state. fn may return false to cancel.
+// Uses a version check so two phones writing at once cannot silently overwrite each other.
+async function mutate(fn){
+  for (let attempt = 0; attempt < 6; attempt++){
+    const { data: cur, error } = await sb.from("games").select("*").eq("id", G.id).single();
+    if (error) throw error;
+    const state = structuredClone(cur.state);
+    if (fn(state) === false){ applyRow(cur); return false; }
+    const { data, error: upErr } = await sb.from("games")
+      .update({ state, version: cur.version + 1, updated_at: new Date().toISOString() })
+      .eq("id", cur.id).eq("version", cur.version).select();
+    if (upErr) throw upErr;
+    if (data && data.length){ applyRow(data[0]); return true; }
+  }
+  throw new Error("Too many changes at once. Please try again.");
+}
+
+setInterval(refreshGame, 4000); // backup in case realtime drops
+
+/* ---------- game logic helpers ---------- */
+
+function buildR1(s){
+  return shuffle(Object.entries(s.cards).map(([owner, c]) => ({ owner, text: c.fact })));
+}
+function buildR2(s){
+  const cards = Object.entries(s.cards).flatMap(([owner, c]) => [
+    { owner, text: c.strength, type: "strength" },
+    { owner, text: c.quirk, type: "quirk" }
+  ]);
+  return { order: shuffle(cards), idx: 0, turn: null, turnNo: 0, turnTeam: 0 };
+}
+
+/* ---------- rendering ---------- */
+
+function render(){
+  const html = G ? renderGame() : renderHome();
+  if (html !== lastHtml){
+    $("app").innerHTML = html;
+    lastHtml = html;
+  }
+  tick();
+}
+
+function renderHome(){
+  return `
+    <h1>Family Field Guide</h1>
+    <p class="muted">Everyone plays on their own phone. One person hosts and shares the code.</p>
+    <div class="card">
+      <h2>Host a game</h2>
+      <label for="names">Player names, one per line (at least 3)</label>
+      <textarea id="names" rows="8"></textarea>
+      <button data-act="create">Create game</button>
+    </div>
+    <div class="card">
+      <h2>Join a game</h2>
+      <label for="code">Game code</label>
+      <input id="code" maxlength="6" autocapitalize="characters" autocomplete="off">
+      <button class="secondary" data-act="join">Join</button>
+    </div>`;
+}
+
+function renderGame(){
+  const s = G.state;
+  const header = `<p class="tag">Game code <strong>${esc(G.code)}</strong> · ${isHost ? "You are the host" : "Player"}</p>`;
+  let body = "";
+  if (s.phase === "lobby") body = renderLobby(s);
+  else if (s.phase === "entry") body = renderEntry(s);
+  else if (s.phase === "r1") body = renderR1(s);
+  else if (s.phase === "r2") body = renderR2(s);
+  else if (s.phase === "r3") body = renderR3(s);
+  else if (s.phase === "final") body = renderFinal(s);
+  return header + body + `<button class="ghost" data-act="leave">Leave game on this phone</button>`;
+}
+
+function claimList(s){
+  const open = s.players.filter(p => !p.claimed);
+  if (!open.length) return `<p class="muted">Everyone has picked a name.</p>`;
+  return `<p class="muted">Tap your name.</p>` +
+    open.map(p => `<button class="secondary" data-act="claim" data-pid="${esc(p.id)}">I'm ${esc(p.name)}</button>`).join("");
+}
+
+function scoreBox(s){
+  return `<div class="card">` + s.teams.map(t =>
+    `<div class="score"><span>${esc(t.name)}<br><span class="muted">${t.members.map(id => esc(pname(s, id))).join(", ")}</span></span><strong>${t.points}</strong></div>`
+  ).join("") + `</div>`;
+}
+
+function renderLobby(s){
+  const list = s.players.map(p =>
+    `<li>${esc(p.name)} ${p.claimed ? "✓ joined" : '<span class="muted">not joined yet</span>'}</li>`).join("");
+  const hostPart = isHost
+    ? `<button data-act="start-cards" ${s.players.length < 3 ? "disabled" : ""}>Make teams and start writing cards</button>`
+    : "";
+  const meBlock = me
+    ? `<p class="muted">You're in as ${esc(pname(s, me))}. Waiting for the host to start.</p>`
+    : `<h2>Who are you?</h2>${claimList(s)}`;
+  return `<div class="card"><h2>Lobby</h2><ul class="plist">${list}</ul>${meBlock}${hostPart}</div>`;
+}
+
+function renderEntry(s){
+  const total = s.players.length;
+  const done = Object.keys(s.cards).length;
+  const teamLine = me && teamOf(s, me) ? `<p class="muted">Your team: <strong>${esc(teamOf(s, me).name)}</strong></p>` : "";
+  if (isHost){
+    const progress = s.players.map(p =>
+      `<li>${esc(p.name)} ${s.cards[p.id] ? "✓ cards in" : '<span class="muted">still writing</span>'}</li>`).join("");
+    return `<div class="card"><h2>Writing cards</h2><p class="muted">${done} of ${total} done.</p>
+      <ul class="plist">${progress}</ul>
+      <button data-act="start-r1" ${done < 3 ? "disabled" : ""}>Start Round 1</button></div>`;
+  }
+  if (!me) return `<div class="card"><h2>Who are you?</h2>${claimList(s)}</div>`;
+  if (s.cards[me]) return `<div class="card">${teamLine}<h2>Cards saved</h2><p class="muted">Waiting for the host to start Round 1. ${done} of ${total} done.</p></div>`;
+  return `<div class="card">${teamLine}
+    <h2>Write your three cards</h2>
+    <p class="muted">Only you see these until the game plays them.</p>
+    <label for="in-strength">A strength (e.g. "I can fix anything with duct tape")</label>
+    <input id="in-strength" maxlength="120">
+    <label for="in-quirk">A quirk (e.g. "I always reorganize the fridge")</label>
+    <input id="in-quirk" maxlength="120">
+    <label for="in-fact">A fact most people don't know</label>
+    <input id="in-fact" maxlength="120">
+    <button data-act="save-cards">Save my cards</button></div>`;
+}
+
+function renderR1(s){
+  const r = s.r1;
+  const c = r.order[r.idx];
+  if (!c) return "";
+  let controls = "";
+  if (isHost){
+    controls = !r.revealed
+      ? `<button data-act="reveal">Reveal the author</button>`
+      : s.teams.map((t, i) => `<button class="secondary" data-act="award" data-team="${i}">${esc(t.name)} +1</button>`).join("") +
+        `<button class="ghost" data-act="award" data-team="-1">Nobody guessed</button>`;
+  }
+  const reveal = r.revealed ? `<p class="center">Written by <strong>${esc(pname(s, c.owner))}</strong>. Let them tell the story.</p>` : "";
+  return `<div class="card"><p class="tag">Round 1 · Who Is This? · ${r.idx + 1} of ${r.order.length}</p>
+    <p class="big">“${esc(c.text)}”</p><p class="muted center">Everyone guesses who wrote it.</p>${reveal}${controls}</div>
+    ${scoreBox(s)}`;
+}
+
+function renderR2(s){
+  const r = s.r2;
+  if (r.idx >= r.order.length){
+    return `<div class="card"><p class="big">All cards used!</p>
+      ${isHost ? `<button data-act="finish-r2">Go to the awards</button>` : ""}</div>${scoreBox(s)}`;
+  }
+  const c = r.order[r.idx];
+  const teamIdx = r.turn ? r.turn.team : r.turnTeam;
+  const team = s.teams[teamIdx];
+  const label = c.type === "strength" ? "Strength" : "Quirk";
+  let inner;
+  if (r.turn){
+    const acting = me && team.members.includes(me);
+    const cardText = acting
+      ? `<p class="big">${label}: ${esc(c.text)}</p><p class="muted center">Act it out. Don't say the person's name.</p>`
+      : `<p class="big">${esc(team.name)} is acting.</p><p class="muted center">Guess!</p>`;
+    const id = r.turn.id, idx = r.idx;
+    inner = `<p class="tag">Round 2 · Team Charades · card ${r.idx + 1} of ${r.order.length}</p>
+      ${cardText}
+      <div class="timer" id="timer">${TURN_SECONDS}</div>
+      <div class="row">
+        <button data-act="got" data-id="${id}" data-idx="${idx}">Got it +1</button>
+        <button class="secondary" data-act="pass" data-id="${id}" data-idx="${idx}">Pass</button>
+      </div>`;
+  } else {
+    inner = `<p class="tag">Round 2 · Team Charades</p>
+      <p class="big">${esc(team.name)} is up next.</p>
+      ${isHost ? `<button data-act="start-turn">Start 60-second turn</button>` : `<p class="muted center">Waiting for the host to start the turn.</p>`}`;
+  }
+  return `<div class="card">${inner}</div>${scoreBox(s)}
+    ${isHost ? `<button class="secondary" data-act="finish-r2">Finish round now</button>` : ""}`;
+}
+
+function renderR3(s){
+  const r = s.r3;
+  const cat = AWARDS[r.awIdx];
+  const won = r.winners[r.awIdx];
+  let controls = "";
+  if (isHost){
+    if (won === undefined){
+      controls = s.players.map(p =>
+        `<button class="secondary" data-act="pick-winner" data-pid="${esc(p.id)}">${esc(p.name)}</button>`).join("");
+    } else {
+      controls = `<button data-act="next-award">${r.awIdx + 1 < AWARDS.length ? "Next award" : "See final scores"}</button>`;
+    }
+  }
+  const result = won !== undefined
+    ? `<p class="final">${esc(pname(s, won))} wins!</p>`
+    : `<p class="muted center">Talk it over. The host taps the winner.</p>`;
+  return `<div class="card"><p class="tag">Round 3 · Family Awards · ${r.awIdx + 1} of ${AWARDS.length}</p>
+    <p class="big">${esc(cat)}</p>${result}${controls}</div>`;
+}
+
+function renderFinal(s){
+  const sorted = s.teams.slice().sort((a, b) => b.points - a.points);
+  const tie = sorted.length > 1 && sorted[0].points === sorted[1].points;
+  const awards = AWARDS.map((a, i) => {
+    const w = s.r3 && s.r3.winners[i];
+    return `<p class="muted">${esc(a)}: <strong>${esc(w !== undefined ? pname(s, w) : "nobody")}</strong></p>`;
+  }).join("");
+  return `<div class="card"><div class="final">${tie ? "It's a tie!" : esc(sorted[0].name) + " wins!"}</div></div>
+    ${scoreBox(s)}<div class="card"><h2>Awards</h2>${awards}</div>`;
+}
+
+/* ---------- timer: any phone can close an expired turn ---------- */
+
+function tick(){
+  if (!G || G.state.phase !== "r2" || !G.state.r2 || !G.state.r2.turn) return;
+  const t = G.state.r2.turn;
+  const left = Math.max(0, Math.ceil((t.endsAt - Date.now()) / 1000));
+  const el = $("timer");
+  if (el) el.textContent = left;
+  if (left === 0 && !endingTurn){
+    endingTurn = true;
+    mutate(s => {
+      const r = s.r2;
+      if (!r || !r.turn || r.turn.id !== t.id || Date.now() < r.turn.endsAt) return false;
+      r.turn = null;
+      r.turnTeam = (r.turnTeam + 1) % s.teams.length;
+    }).catch(() => {}).finally(() => { endingTurn = false; });
+  }
+}
+setInterval(tick, 500);
+
+/* ---------- actions ---------- */
+
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-act]");
+  if (!b || b.disabled) return;
+  try {
+    await handle(b.dataset.act, b);
+  } catch (err){
+    say("Something went wrong: " + err.message);
+  } finally {
+    render();
+  }
+});
+
+async function handle(act, b){
+  switch (act){
+    case "create": {
+      const names = $("names").value.split("\n").map(x => x.trim()).filter(Boolean);
+      if (names.length < 3) return say("Please enter at least 3 names.");
+      const code = makeCode();
+      const state = {
+        phase: "lobby",
+        players: names.map((name, i) => ({ id: "p" + i, name, claimed: false })),
+        teams: [], cards: {}
+      };
+      const { error } = await sb.from("games").insert({ code, state, version: 1 });
+      if (error) return say("Could not create the game: " + error.message);
+      isHost = true;
+      await openGame(code, true);
+      return;
+    }
+    case "join": {
+      const code = $("code").value.trim();
+      if (code.length < 4) return say("Enter the game code.");
+      await openGame(code, false);
+      return;
+    }
+    case "leave": {
+      if (channel) sb.removeChannel(channel);
+      channel = null; G = null; isHost = false; me = null;
+      history.replaceState(null, "", location.pathname);
+      return;
+    }
+    case "claim": {
+      const pid = b.dataset.pid;
+      const ok = await mutate(s => {
+        const p = s.players.find(x => x.id === pid);
+        if (!p || p.claimed) return false;
+        p.claimed = true;
+      });
+      if (ok){
+        me = pid;
+        saveIdent(G.code, { ...ident(G.code), me });
+      } else say("That name was just taken. Pick another.");
+      return;
+    }
+    case "start-cards": {
+      if (!isHost) return;
+      const ok = await mutate(s => {
+        if (s.phase !== "lobby" || s.players.length < 3) return false;
+        const n = Math.max(2, Math.ceil(s.players.length / 4));
+        s.teams = Array.from({ length: n }, (_, i) => ({
+          name: TEAM_NAMES[i] || ("Team " + (i + 1)), members: [], points: 0
+        }));
+        shuffle(s.players.map(p => p.id)).forEach((pid, i) => s.teams[i % n].members.push(pid));
+        s.cards = {};
+        s.phase = "entry";
+      });
+      if (!ok) say("Could not start. Check the player list.");
+      return;
+    }
+    case "save-cards": {
+      const strength = $("in-strength").value.trim();
+      const quirk = $("in-quirk").value.trim();
+      const fact = $("in-fact").value.trim();
+      if (!strength || !quirk || !fact) return say("Please fill in all three cards.");
+      await mutate(s => {
+        if (s.phase !== "entry") return false;
+        s.cards[me] = { strength, quirk, fact };
+      });
+      return;
+    }
+    case "start-r1": {
+      if (!isHost) return;
+      const ok = await mutate(s => {
+        if (s.phase !== "entry" || Object.keys(s.cards).length < 3) return false;
+        s.r1 = { order: buildR1(s), idx: 0, revealed: false };
+        s.phase = "r1";
+      });
+      if (!ok) say("Round 1 needs at least 3 people's cards.");
+      return;
+    }
+    case "reveal": {
+      await mutate(s => {
+        if (!s.r1) return false;
+        s.r1.revealed = true;
+      });
+      return;
+    }
+    case "award": {
+      const team = Number(b.dataset.team);
+      await mutate(s => {
+        const r = s.r1;
+        if (!r || !r.revealed) return false;
+        if (team >= 0) s.teams[team].points += 1;
+        r.idx += 1;
+        r.revealed = false;
+        if (r.idx >= r.order.length){
+          s.phase = "r2";
+          s.r2 = buildR2(s);
+        }
+      });
+      return;
+    }
+    case "start-turn": {
+      if (!isHost) return;
+      await mutate(s => {
+        const r = s.r2;
+        if (!r || r.turn || r.idx >= r.order.length) return false;
+        r.turnNo += 1;
+        r.turn = { id: r.turnNo, team: r.turnTeam, endsAt: Date.now() + TURN_SECONDS * 1000 };
+      });
+      return;
+    }
+    case "got":
+    case "pass": {
+      const id = Number(b.dataset.id), idx = Number(b.dataset.idx);
+      await mutate(s => {
+        const r = s.r2;
+        if (!r || !r.turn || r.turn.id !== id || r.idx !== idx || Date.now() >= r.turn.endsAt) return false;
+        if (act === "got") s.teams[r.turn.team].points += 1;
+        r.idx += 1;
+        if (r.idx >= r.order.length) r.turn = null;
+      });
+      return;
+    }
+    case "finish-r2": {
+      if (!isHost) return;
+      await mutate(s => {
+        if (s.phase !== "r2") return false;
+        s.phase = "r3";
+        s.r3 = { awIdx: 0, winners: {} };
+      });
+      return;
+    }
+    case "pick-winner": {
+      if (!isHost) return;
+      const pid = b.dataset.pid;
+      await mutate(s => {
+        if (!s.r3) return false;
+        s.r3.winners[s.r3.awIdx] = pid;
+      });
+      return;
+    }
+    case "next-award": {
+      if (!isHost) return;
+      await mutate(s => {
+        const r = s.r3;
+        if (!r || r.winners[r.awIdx] === undefined) return false;
+        r.awIdx += 1;
+        if (r.awIdx >= AWARDS.length) s.phase = "final";
+      });
+      return;
+    }
+  }
+}
+
+/* ---------- start ---------- */
+
+const params = new URLSearchParams(location.search);
+if (params.get("code")) openGame(params.get("code"), false);
+else render();
+</script>
+</body>
+</html>
