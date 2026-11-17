@@ -224,16 +224,16 @@ function renderEntry(s){
   const total = s.players.length;
   const done = Object.keys(s.cards).length;
   const teamLine = me && teamOf(s, me) ? `<p class="muted">Your team: <strong>${esc(teamOf(s, me).name)}</strong></p>` : "";
-  if (isHost){
-    const progress = s.players.map(p =>
-      `<li>${esc(p.name)} ${s.cards[p.id] ? "✓ cards in" : '<span class="muted">still writing</span>'}</li>`).join("");
-    return `<div class="card"><h2>Writing cards</h2><p class="muted">${done} of ${total} done.</p>
+  const progress = s.players.map(p =>
+    `<li>${esc(p.name)} ${s.cards[p.id] ? "✓ cards in" : '<span class="muted">still writing</span>'}</li>`).join("");
+  const hostPart = isHost
+    ? `<div class="card"><h2>Writing cards</h2><p class="muted">${done} of ${total} done.</p>
       <ul class="plist">${progress}</ul>
-      <button data-act="start-r1" ${done < 3 ? "disabled" : ""}>Start Round 1</button></div>`;
-  }
-  if (!me) return `<div class="card"><h2>Who are you?</h2>${claimList(s)}</div>`;
-  if (s.cards[me]) return `<div class="card">${teamLine}<h2>Cards saved</h2><p class="muted">Waiting for the host to start Round 1. ${done} of ${total} done.</p></div>`;
-  return `<div class="card">${teamLine}
+      <button data-act="start-r1" ${done < 3 ? "disabled" : ""}>Start Round 1</button></div>`
+    : "";
+  if (!me) return hostPart + `<div class="card"><h2>Who are you?</h2>${claimList(s)}</div>`;
+  if (s.cards[me]) return hostPart + `<div class="card">${teamLine}<h2>Cards saved</h2><p class="muted">Waiting for the host to start Round 1. ${done} of ${total} done.</p></div>`;
+  const formHtml = `<div class="card">${teamLine}
     <h2>Write your three cards</h2>
     <p class="muted">Only you see these until the game plays them.</p>
     <label for="in-strength">A strength (e.g. "I can fix anything with duct tape")</label>
@@ -243,6 +243,7 @@ function renderEntry(s){
     <label for="in-fact">A fact most people don't know</label>
     <input id="in-fact" maxlength="120">
     <button data-act="save-cards">Save my cards</button></div>`;
+  return hostPart + formHtml;
 }
 
 function renderR1(s){
