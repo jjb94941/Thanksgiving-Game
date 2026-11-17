@@ -30,11 +30,13 @@ label{display:block;color:var(--muted);font-size:15px;margin-top:4px}
 ul.plist{list-style:none;padding:0;margin:0 0 8px}
 ul.plist li{padding:6px 0;border-bottom:1px solid #eee}
 #flash{color:var(--err);min-height:1.3em;font-size:15px;text-align:center}
+.version{color:var(--muted);font-size:12px;text-align:center;margin:24px 0 8px;opacity:.8}
 </style>
 </head>
 <body>
 <main id="app"><p class="muted">Loading…</p></main>
 <p id="flash"></p>
+<p id="version" class="version"></p>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
@@ -147,6 +149,9 @@ const LADDER_WRONG = -1;           // a wrong ladder guess
 const STEP_MS = 15000;             // each ladder clue appears 15 seconds after the last
 const LADDER_MS = 60000;           // the ladder closes after 60 seconds
 const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const APP_VERSION = "4.0.0";
+const APP_BUILD = "2026-11-17";
+document.getElementById("version").textContent = "Family Field Guide v" + APP_VERSION + " · build " + APP_BUILD;
 
 let G = null;           // { id, code, version, state }
 let isHost = false;
