@@ -265,7 +265,7 @@ setInterval(refreshGame, 4000); // backup in case realtime drops
 function eligible(s, item){
   let pool = s.players.filter(p => p.claimed);
   if (item.ch === 4) pool = pool.filter(p => s.finalists.includes(p.id));
-  if (item.target) pool = pool.filter(p => p.id !== item.target);
+  // The person being described may guess too; a self-guess scores 0 (see revealItem).
   return pool.map(p => p.id);
 }
 // Which clue step is showing for a ladder item (1, 2, or 3)
@@ -313,7 +313,8 @@ function revealItem(s){
     const majority = c[0] === c[1] ? null : (c[0] > c[1] ? 0 : 1);
     votes.forEach(([pid, v]) => { base[pid] = majority !== null && v.choice === majority ? 1 : 0; });
   } else {
-    votes.forEach(([pid, v]) => { base[pid] = baseDelta(s, item, v); });
+    // Guessing about yourself is allowed but never scores.
+    votes.forEach(([pid, v]) => { base[pid] = pid === item.target ? 0 : baseDelta(s, item, v); });
   }
   s.lastDelta = {};
   votes.forEach(([pid, v]) => {
@@ -522,6 +523,10 @@ function renderPlay(s){
 
   if (canVote && doubleLeft > 0){
     extra += `<button class="${doubleDraft ? "" : "secondary"} center-btn" data-act="toggle-double">Double on this vote: ${doubleDraft ? "on" : "off"} (${doubleLeft} left)</button>`;
+  }
+
+  if (canVote && item.target === me){
+    extra = `<p class="muted center">This one is about you. You can still guess, but a guess about yourself scores 0.</p>` + extra;
   }
 
   let body;
