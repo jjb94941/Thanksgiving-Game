@@ -18,6 +18,8 @@ Each player starts with one **Double** (doubles the points from one vote) and on
 - **Chapter 3, Would You Rather.** Everyone picks one of two options. You score 1 point if you match the majority. A tie scores nothing.
 - **Chapter 4, Showdown.** The top three players by score become the finalists. Only they vote on three clue ladders, and every point is doubled. Everyone else watches.
 
+The person being described can still guess about themselves, but a guess about yourself scores 0 points.
+
 Votes are revealed when everyone who can vote has voted, or when the host taps **Reveal now**. Ladders also close on their own after 60 seconds. The host taps **Start Chapter** between chapters.
 
 ## Setup (one time)
