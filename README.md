@@ -7,7 +7,7 @@ A phone game for a family group (about 3 to 12 players). Each person plays on th
 1. **Host:** open the site, type the player names (one per line), and tap **Create game**. Share the code or the link in the address bar.
 2. **Everyone:** open the site, tap **Join**, enter the code, and tap your own name. The host can also tap their name.
 3. **Host:** tap **Start the questionnaire**. Each player gets a number (1, 2, 3…) at random.
-4. **Everyone:** answer the twelve questions about yourself on your own phone. Tap every answer that fits you, or tap **None of the above**, which clears the other picks. Tapping a regular answer clears **None of the above**. The host starts the game once at least three people have finished. Anyone who hasn't finished sits out.
+4. **Everyone:** first tap your age group (under 10, 10 to 15, 16 to 24, 25 to 39, 40 to 59, or 60 or over). Your age group decides which version of each question you see. Then answer the twelve questions about yourself on your own phone. Until you save your answers, you can tap **Change my age group** to pick again. Tap every answer that fits you, or tap **None of the above**, which clears the other picks. Tapping a regular answer clears **None of the above**. The host starts the game once at least three people have finished. Anyone who hasn't finished sits out.
 
 Each player starts with one **Double** (doubles the points from one vote) and one **Lifeline** (removes two wrong answers from one guess). Each can be used once per game.
 

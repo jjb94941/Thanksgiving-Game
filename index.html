@@ -133,6 +133,102 @@ const QUESTIONS = [
   ]}
 ];
 
+// Age groups asked at the start of the questionnaire. Band index 1 uses QUESTIONS above.
+const AGE_BANDS = [
+  { label: "Under 10" },
+  { label: "10 to 15" },
+  { label: "16 to 24" },
+  { label: "25 to 39" },
+  { label: "40 to 59" },
+  { label: "60 or over" }
+];
+// Compact builder: T(question, [label, clue], [label, clue], ...)
+const T = (q, ...o) => ({ q, options: o.map(([label, clue]) => ({ label, clue })) });
+
+// Under 10
+const KIDS_QS = [
+  T("What do you like to do on a free weekend?", ["Playing outside or at the park", "loves playing outside at the park"], ["Watching cartoons or movies", "would rather watch cartoons or movies"], ["Playing with toys or LEGO", "loves playing with toys or LEGO"], ["Swimming or going to the pool", "loves swimming or going to the pool"], ["Visiting grandparents or cousins", "loves visiting grandparents or cousins"]),
+  T("Where do you live?", ["In a city apartment", "lives in a city apartment"], ["In a house with a yard", "lives in a house with a yard"], ["In a small town", "lives in a small town"], ["On a farm or in the country", "lives on a farm or in the country"], ["In a few different places", "has moved a lot"]),
+  T("What's your favorite thing at school?", ["Recess", "loves recess the most"], ["Reading time", "loves reading time"], ["Math", "loves math"], ["Art or music", "loves art or music"], ["Gym or sports", "loves gym or sports"]),
+  T("What music or shows do you like?", ["Kids' songs", "listens to kids' songs the most"], ["Cartoon theme songs", "loves cartoon theme songs"], ["Dance songs", "loves dance songs"], ["Songs on car rides", "loves the songs on car rides"], ["Stories at bedtime", "loves bedtime stories the most"]),
+  T("What's the best part of a holiday?", ["Presents", "says presents are the best part"], ["Treats and candy", "says treats are the best part"], ["Playing with cousins", "loves playing with cousins best"], ["Dressing up", "loves dressing up best"], ["Staying up late", "loves staying up late best"]),
+  T("What do people ask you for help with?", ["Finding lost things", "is the one people ask to find lost things"], ["Picking out clothes", "is the one people ask to pick out clothes"], ["Setting the table", "is the one people ask to set the table"], ["Making snacks", "is the one people ask to make snacks"], ["Reading a story", "is the one people ask to read a story"]),
+  T("What do you like to read or watch?", ["Picture books", "reads picture books most"], ["Cartoons", "watches cartoons most"], ["Animals and dinosaurs", "loves animals and dinosaurs"], ["Superheroes", "loves superheroes most"], ["Silly stories", "loves silly stories most"]),
+  T("Which food do you like best?", ["Pizza or pasta", "likes pizza or pasta most"], ["Fruit", "loves fruit most"], ["Sweet treats", "always wants something sweet"], ["Chicken nuggets", "likes chicken nuggets most"], ["Plain food with no sauce", "likes plain food with no sauce"]),
+  T("Where would you like to go on a trip?", ["The zoo or aquarium", "would pick the zoo or aquarium"], ["A theme park", "would pick a theme park"], ["The beach", "would pick the beach"], ["Grandparents' house", "would pick grandparents' house"], ["A farm", "would pick a farm"]),
+  T("What do you hate the most?", ["Going to bed", "hates going to bed"], ["Sharing toys", "hates sharing toys"], ["Vegetables", "hates vegetables"], ["Being woken up early", "hates being woken up early"], ["Being interrupted", "hates being interrupted"]),
+  T("What's your favorite hobby?", ["Drawing or coloring", "loves drawing or coloring"], ["Building with blocks", "loves building with blocks"], ["Pretend play", "loves pretend play"], ["Playing a sport", "loves playing a sport"], ["Collecting things", "loves collecting things"]),
+  T("How do you find out about new things?", ["A parent tells me", "hears about things from a parent first"], ["Kids' news shows", "hears about things from kids' news shows"], ["TV or videos", "finds out things from TV or videos"], ["Friends at school", "hears about things from friends at school"], ["I don't really find out about news", "does not really follow the news"])
+];
+
+// 16 to 24
+const YOUNG_QS = [
+  T("What do you like to do on a free weekend?", ["Going out with friends", "would rather go out with friends"], ["Gaming or streaming", "would rather game or stream"], ["Working out or playing sports", "would rather work out or play sports"], ["Staying in and catching up on sleep", "would rather stay in and catch up on sleep"], ["Exploring somewhere new", "would rather explore somewhere new"]),
+  T("Where have you lived?", ["Hometown, never moved far", "has never moved far from home"], ["Moved away for school", "moved away for school"], ["Moved away for work", "moved away for work"], ["Lots of moves", "has moved a lot"], ["Lived abroad at some point", "has lived abroad"]),
+  T("What are you doing right now, with school or work?", ["Studying at university", "is studying at university"], ["Learning a trade", "is learning a trade"], ["Working full time", "already works full time"], ["Taking time off to travel", "is taking time off to travel"], ["Still in high school", "is still in high school"]),
+  T("What music do you listen to most?", ["Hip-hop and R&B", "listens to hip-hop and R&B most"], ["Indie or alternative", "listens to indie or alternative most"], ["Pop and dance", "listens to pop and dance most"], ["Rock or metal", "listens to rock or metal most"], ["Podcasts", "would rather listen to podcasts"]),
+  T("What's the best part of a holiday?", ["Seeing friends", "says seeing friends is the best part"], ["Family time", "says family time is the best part"], ["The food", "says the food is the best part"], ["Sleeping in", "loves sleeping in on a holiday"], ["Traveling", "loves traveling over a holiday"]),
+  T("What are people most likely to ask you for help with?", ["Money or budgeting", "is the one friends ask about money"], ["Tech or phone problems", "is the one people ask about tech"], ["Cooking", "is the one people ask for cooking help"], ["Relationship advice", "is the one friends come to about relationships"], ["Schoolwork", "is the one people ask for study help"]),
+  T("What do you watch or read most?", ["Thrillers or horror", "watches thrillers and horror most"], ["Anime or animation", "watches anime or animation most"], ["Comedy", "watches comedy most"], ["Fantasy or sci-fi", "reads or watches fantasy or sci-fi most"], ["Reality or dating shows", "watches reality TV most"]),
+  T("Which describes your food taste?", ["Spicy", "likes spicy food best"], ["Takeout", "orders takeout most"], ["Sweets", "always saves room for dessert"], ["Healthy bowls", "eats healthy bowls most"], ["Food from around the world", "likes food from around the world"]),
+  T("Where would you most like to go on a trip?", ["A city break", "would pick a city break"], ["A beach holiday", "would pick a beach holiday"], ["A road trip with friends", "would pick a road trip with friends"], ["Backpacking abroad", "would pick backpacking abroad"], ["A music festival", "would pick a music festival"]),
+  T("What bugs you most?", ["Being left on read", "is bugged most by being left on read"], ["People running late", "is bugged most by people running late"], ["Busy group chats", "is bugged most by busy group chats"], ["People canceling plans", "is bugged most by people canceling plans"], ["Loud neighbors", "is bugged most by loud neighbors"]),
+  T("What's your favorite hobby?", ["Music or an instrument", "plays music or an instrument"], ["Gym or running", "loves gym or running"], ["Gaming", "loves gaming"], ["Art or photography", "loves art or photography"], ["Cooking or baking", "loves cooking or baking"]),
+  T("How do you usually find out what's going on?", ["Social media", "finds out what's going on mostly from social media"], ["TikTok or YouTube", "gets news from TikTok or YouTube"], ["Podcasts", "gets news from podcasts"], ["News apps or websites", "gets news from news apps or websites"], ["Friends", "hears things from friends first"])
+];
+
+// 25 to 39
+const ADULT_QS = [
+  T("How do you like to spend a free weekend?", ["Family or kids' activities", "would rather spend the weekend on family time"], ["Date night or friends", "would rather spend it with a partner or friends"], ["Working out outdoors", "would rather spend it working out outdoors"], ["Home projects", "would rather spend it on home projects"], ["Exploring somewhere new", "would rather spend it exploring somewhere new"]),
+  T("Where have you lived most of your life?", ["A big city", "has lived mostly in a big city"], ["A suburb", "has lived mostly in a suburb"], ["A small town", "has lived mostly in a small town"], ["The countryside", "has lived mostly in the countryside"], ["Several places over the years", "has moved around a lot"]),
+  T("What kind of work do you do?", ["Office or corporate work", "works in an office"], ["Healthcare or education", "works in healthcare or education"], ["Tech or engineering", "works in tech or engineering"], ["Trades or hands-on work", "works with their hands"], ["Running their own business", "runs their own business"]),
+  T("What music do you listen to most?", ["Pop or dance", "listens to pop or dance most"], ["Classic rock", "listens to classic rock most"], ["Country or folk", "listens to country or folk most"], ["Jazz or soul", "listens to jazz or soul most"], ["Podcasts or audiobooks", "would rather listen to podcasts or audiobooks"]),
+  T("What's the best part of a holiday?", ["Time with family", "says family time is the best part"], ["Food and drink", "says the food and drink is the best part"], ["A break from work", "says the break from work is the best part"], ["Traveling to see people", "loves traveling to see people"], ["Quiet time", "loves the quiet time"]),
+  T("What are people most likely to ask you for help with?", ["Fixing things around the house", "is the one people ask to fix things"], ["Money and taxes", "is the one people ask about money or taxes"], ["Tech and gadgets", "is the one people ask about tech"], ["Cooking and recipes", "is the one people ask for recipes"], ["Parenting advice", "is the one people ask for parenting advice"]),
+  T("What do you read or watch most?", ["Thrillers", "reads or watches thrillers most"], ["Documentaries", "watches documentaries most"], ["Comedy", "watches comedy most"], ["Sci-fi or fantasy", "watches sci-fi or fantasy most"], ["Business or self-help", "reads business or self-help books most"]),
+  T("Which describes your food taste best?", ["Classic comfort food", "likes classic comfort food"], ["Spicy and bold", "likes spicy and bold food"], ["Food from around the world", "likes food from around the world"], ["Healthy and fresh", "likes healthy, fresh food"], ["Simple and plain", "prefers simple, plain food"]),
+  T("Where would you most like to go on a trip?", ["A beach", "would pick a beach"], ["A city break", "would pick a city break"], ["A road trip", "would pick a road trip"], ["A hiking or camping trip", "would pick a hiking or camping trip"], ["Visiting family", "would pick visiting family"]),
+  T("What bugs you most at home or at work?", ["Phones at the table", "is bugged most by phones at the table"], ["Meetings that could be emails", "is bugged most by pointless meetings"], ["Traffic", "is bugged most by traffic"], ["Messes left behind", "is bugged most by messes left behind"], ["Bills and paperwork", "is bugged most by bills and admin"]),
+  T("What's your favorite hobby?", ["Reading", "loves reading"], ["Cooking or baking", "loves cooking or baking"], ["Gardening", "loves gardening"], ["Fitness or running", "loves fitness or running"], ["Playing an instrument", "plays an instrument"]),
+  T("How do you usually find out what's going on?", ["News websites or apps", "reads the news on websites or apps"], ["Social media", "gets news from social media"], ["Podcasts", "gets news from podcasts"], ["TV news", "watches TV news"], ["A partner or friends", "hears news from a partner or friends first"])
+];
+
+// 40 to 59
+const MIDDLE_QS = [
+  T("How do you like to spend a free weekend?", ["Golf or tennis", "would rather spend the weekend on the golf course or court"], ["Gardening or yard work", "would rather spend it in the garden"], ["Visiting kids or grandkids", "would rather spend it with kids or grandkids"], ["Reading or a good show", "would rather read or watch a good show"], ["A day trip", "would rather take a day trip"]),
+  T("Where have you lived most of your life?", ["The same town for decades", "has lived in the same town for decades"], ["A suburb", "has lived mostly in a suburb"], ["A big city", "has lived mostly in a big city"], ["The countryside", "has lived mostly in the countryside"], ["Several places over the years", "has moved around a lot"]),
+  T("What kind of work do you do, or did you do?", ["Management or leadership", "is in management or leadership"], ["Healthcare or education", "works in healthcare or education"], ["Finance or law", "works in finance or law"], ["Trades or hands-on work", "works with their hands"], ["Retired or semi-retired", "has retired or is semi-retired"]),
+  T("What music do you listen to most?", ["70s and 80s hits", "listens to 70s and 80s music most"], ["Classic rock", "listens to classic rock most"], ["Country", "listens to country most"], ["Jazz", "listens to jazz most"], ["Audiobooks", "would rather listen to audiobooks"]),
+  T("What's the best part of a holiday?", ["Family gathering", "says the family gathering is the best part"], ["The meal", "says the meal is the best part"], ["Time off work", "says time off work is the best part"], ["Traveling", "loves traveling over a holiday"], ["A quiet day", "loves a quiet day"]),
+  T("What are people most likely to ask you for help with?", ["Computers and phones", "is the one people ask about computers and phones"], ["Planning events", "is the one people ask to plan events"], ["Cooking", "is the one people ask for recipes"], ["Money or insurance", "is the one people ask about money or insurance"], ["Advice about kids", "is the one people ask for advice about kids"]),
+  T("What do you read or watch most?", ["Mysteries and crime", "reads or watches mysteries and crime most"], ["History", "reads or watches history most"], ["Comedy", "watches comedy most"], ["Nature and travel shows", "watches nature and travel shows most"], ["Sports", "watches sports most"]),
+  T("Which describes your food taste best?", ["Classic home cooking", "likes classic home cooking"], ["Spicy food", "likes spicy food"], ["Seafood", "loves seafood"], ["Dessert first", "always saves room for dessert"], ["Plain and simple", "prefers plain, simple food"]),
+  T("Where would you most like to go on a trip?", ["A cruise", "would pick a cruise"], ["Europe", "would pick Europe"], ["A road trip", "would pick a road trip"], ["A beach resort", "would pick a beach resort"], ["Visiting family", "would pick visiting family"]),
+  T("What bugs you most?", ["Rude drivers", "is bugged most by rude drivers"], ["Noisy restaurants", "is bugged most by noisy restaurants"], ["Constant software updates", "is bugged most by constant software updates"], ["Slow service", "is bugged most by slow service"], ["Loud neighbors", "is bugged most by loud neighbors"]),
+  T("What's your favorite hobby?", ["Golf", "loves golf"], ["Reading or book club", "loves reading or book club"], ["Woodworking or DIY", "loves woodworking or DIY"], ["Cooking", "loves cooking"], ["Birdwatching or hiking", "loves birdwatching or hiking"]),
+  T("How do you usually keep up with the news?", ["Newspapers", "reads a newspaper"], ["TV news", "watches TV news"], ["News websites", "reads news websites"], ["Podcasts", "listens to podcasts"], ["Social media", "gets news from social media"])
+];
+
+// 60 or over
+const SENIOR_QS = [
+  T("How do you like to spend a free weekend?", ["Walking or hiking", "would rather go walking or hiking"], ["Church or a community group", "would rather spend it at church or a community group"], ["Visiting grandkids", "would rather visit the grandkids"], ["Cards or puzzles", "would rather play cards or puzzles"], ["A movie at home", "would rather watch a movie at home"]),
+  T("Where have you lived most of your life?", ["The same town for decades", "has lived in the same town for decades"], ["A small town", "has lived mostly in a small town"], ["A city", "has lived mostly in a city"], ["The countryside or a farm", "has lived in the countryside"], ["Several places over the years", "has moved around a lot"]),
+  T("What was your work, or what do you do now?", ["Teaching", "taught for much of their career"], ["Healthcare", "worked in healthcare"], ["Business or office work", "worked in an office"], ["Trades or farming", "worked with their hands"], ["Retired", "is retired"]),
+  T("What music do you enjoy most?", ["Big band or swing", "listens to big band or swing"], ["60s hits", "listens to 60s hits most"], ["Country", "listens to country most"], ["Classical", "listens to classical most"], ["Gospel or hymns", "listens to gospel or hymns most"]),
+  T("What's the best part of a holiday?", ["The family dinner", "says the family dinner is the best part"], ["Seeing grandkids", "says seeing grandkids is the best part"], ["Traditions", "loves the old traditions most"], ["A nap afterward", "loves a nap after the meal"], ["Holiday services", "loves the holiday services"]),
+  T("What are people most likely to ask you for help with?", ["Phones and computers", "is the one people ask about phones and computers"], ["Recipes and cooking", "is the one people ask for recipes"], ["Gardening", "is the one people ask about gardening"], ["Crosswords or puzzles", "is the one people ask for puzzle help"], ["Family history", "is the one people ask about family history"]),
+  T("What do you read or watch most?", ["Mysteries", "reads mysteries most"], ["History", "reads history most"], ["Westerns", "watches westerns most"], ["News and documentaries", "watches news and documentaries most"], ["Gardening or cooking shows", "watches gardening or cooking shows most"]),
+  T("Which describes your food taste best?", ["Classic home cooking", "likes classic home cooking"], ["Sweets", "always saves room for dessert"], ["Soups and stews", "likes soups and stews"], ["Seafood", "loves seafood"], ["Plain and simple", "prefers plain, simple food"]),
+  T("Where would you most like to go on a trip?", ["A cruise", "would pick a cruise"], ["A train trip", "would pick a train trip"], ["Visiting family", "would pick visiting family"], ["A beach", "would pick a beach"], ["A national park", "would pick a national park"]),
+  T("What bugs you most?", ["Being rushed", "is bugged most by being rushed"], ["Confusing phone menus", "is bugged most by phone menus"], ["Loud restaurants", "is bugged most by loud restaurants"], ["Cold food", "is bugged most by cold food"], ["Junk mail", "is bugged most by junk mail"]),
+  T("What's your favorite hobby?", ["Gardening", "loves gardening"], ["Knitting or sewing", "loves knitting or sewing"], ["Puzzles or cards", "loves puzzles or cards"], ["Birdwatching", "loves birdwatching"], ["Painting", "loves painting"]),
+  T("How do you usually keep up with the news?", ["A newspaper", "reads the newspaper"], ["TV news", "watches TV news"], ["Radio", "listens to the radio for news"], ["Calls from friends and family", "hears news from friends and family first"], ["The internet", "gets news from the internet"])
+];
+
+// One set of questions per age group, in AGE_BANDS order. Every set has the same 12 topics.
+const QUESTIONS_BY_BAND = [KIDS_QS, QUESTIONS, YOUNG_QS, ADULT_QS, MIDDLE_QS, SENIOR_QS];
+function qFor(band, t){ return QUESTIONS_BY_BAND[band][t]; }
+
 const NONE_LABEL = "None of the above";
 const NONE_CLUE = "says none of the usual options fit them";
 
@@ -154,8 +250,8 @@ const LADDER_WRONG = -1;           // a wrong ladder guess
 const STEP_MS = 15000;             // each ladder clue appears 15 seconds after the last
 const LADDER_MS = 60000;           // the ladder closes after 60 seconds
 const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-const APP_VERSION = "4.1.1";
-const APP_BUILD = "2026-11-17 16:30";
+const APP_VERSION = "4.2.0";
+const APP_BUILD = "2026-11-18";
 document.getElementById("version").textContent = "Family Field Guide v" + APP_VERSION + " · build " + APP_BUILD;
 
 let G = null;           // { id, code, version, state }
@@ -279,12 +375,14 @@ function secsLeft(s){
 // The clue text for step k of a ladder. opts[k] is the option the target picked (or "none").
 function clueFor(s, item, k){
   const qi = item.qs[k], opt = item.opts[k];
-  if (opt === QUESTIONS[qi].options.length) return NONE_CLUE;
-  return QUESTIONS[qi].options[opt].clue;
+  const tb = s.players.find(p => p.id === item.target).band;
+  const Q = qFor(tb, qi);
+  if (opt === Q.options.length) return NONE_CLUE;
+  return Q.options[opt].clue;
 }
 // Labels for a guess question, including "None of the above" as the last choice
-function guessLabels(qi){
-  return [...QUESTIONS[qi].options.map(o => o.label), NONE_LABEL];
+function guessLabels(band, qi){
+  return [...qFor(band, qi).options.map(o => o.label), NONE_LABEL];
 }
 // The option indexes the target picked for a guess item (one or more)
 function guessAnswer(s, item){
@@ -418,8 +516,14 @@ function renderLobby(s){
   return `<div class="card"><h2>Lobby</h2><ul class="plist">${list}</ul>${meBlock}${hostPart}</div>`;
 }
 
-function questionCard(){
-  const Q = QUESTIONS[qStep];
+function ageCard(){
+  return `<div class="card"><p class="tag">Before you start</p><h2>How old are you?</h2>
+    <p class="muted">Your age group decides which version of each question you get.</p>` +
+    AGE_BANDS.map((b, i) => `<button class="secondary" data-act="set-age" data-band="${i}">${esc(b.label)}</button>`).join("") +
+    `</div>`;
+}
+function questionCard(band){
+  const Q = qFor(band, qStep);
   const none = Q.options.length;
   const sel = draft[qStep] || [];
   const complete = allAnswered(draft);
@@ -449,9 +553,13 @@ function renderQuestionnaire(s){
     mine = `<div class="card"><h2>Who are you?</h2>${claimList(s)}</div>`;
   } else {
     const p = s.players.find(x => x.id === me);
-    mine = p && p.answers
-      ? `<div class="card"><h2>Answers saved</h2><p class="muted">Waiting for the others. ${done} of ${total} done.</p></div>`
-      : questionCard();
+    if (p && p.answers){
+      mine = `<div class="card"><h2>Answers saved</h2><p class="muted">Waiting for the others. ${done} of ${total} done.</p></div>`;
+    } else if (p && (p.band === null || p.band === undefined)){
+      mine = ageCard();
+    } else {
+      mine = questionCard(p.band) + `<button class="ghost center-btn" data-act="reset-age">Change my age group</button>`;
+    }
   }
   const progress = s.players.map(p =>
     `<li>${esc(p.name)} ${p.answers ? "✓ done" : '<span class="muted">answering</span>'}</li>`).join("");
@@ -501,13 +609,13 @@ function renderPlay(s){
     }
   } else if (item.kind === "guess"){
     const tp = s.players.find(p => p.id === item.target);
-    prompt = `<p class="tag center">About ${esc(tp.name)}</p><p class="big">${esc(QUESTIONS[item.q].q)}</p>
+    prompt = `<p class="tag center">About ${esc(tp.name)}</p><p class="big">${esc(qFor(tp.band, item.q).q)}</p>
       <p class="muted center">Which answer did ${esc(tp.name)} pick? Their answer may be more than one.</p>`;
     if (canVote){
       const bets = [1, 2, 3].map(b =>
         `<button class="${betDraft === b ? "" : "secondary"} center-btn" data-act="bet" data-b="${b}">Bet ${b}</button>`).join("");
       extra = `<div class="row">${bets}</div>`;
-      choices = guessLabels(item.q).map((lab, k) => hiddenOpts.includes(k) ? "" :
+      choices = guessLabels(tp.band, item.q).map((lab, k) => hiddenOpts.includes(k) ? "" :
         `<button class="secondary" data-act="vote" data-v="${k}">${k + 1}. ${esc(lab)}</button>`).join("");
       if (lifeLeft > 0 && hiddenOpts.length === 0)
         extra += `<button class="secondary center-btn" data-act="lifeline">Lifeline: remove up to two wrong answers</button>`;
@@ -561,7 +669,7 @@ function revealBlock(s, item){
     const tp = s.players.find(p => p.id === item.target);
     answer = `It was: ${tp.num}. ${tp.name}`;
   } else if (item.kind === "guess"){
-    const labels = guessLabels(item.q);
+    const labels = guessLabels(s.players.find(p => p.id === item.target).band, item.q);
     answer = `It was: ${guessAnswer(s, item).map(k => labels[k]).join(" and ")}`;
   } else {
     const c = [0, 0];
@@ -645,7 +753,7 @@ async function handle(act, b){
       const code = makeCode();
       const state = {
         phase: "lobby",
-        players: names.map((name, i) => ({ id: "p" + i, name, claimed: false, num: null, answers: null, points: 0, powers: null })),
+        players: names.map((name, i) => ({ id: "p" + i, name, claimed: false, num: null, answers: null, band: null, points: 0, powers: null })),
         items: [], idx: 0, startedAt: 0, votes: {}, hidden: {}, revealed: false, lastDelta: {}, finalists: []
       };
       const { error } = await sb.from("games").insert({ code, state, version: 1 });
@@ -691,7 +799,8 @@ async function handle(act, b){
     }
     case "toggle": {
       // Tapping an option adds or removes it. "None of the above" clears the others, and any option clears "None".
-      const none = QUESTIONS[qStep].options.length;
+      const band = G.state.players.find(x => x.id === me).band;
+      const none = qFor(band, qStep).options.length;
       const o = b.dataset.o === "none" ? none : Number(b.dataset.o);
       let sel = (draft[qStep] || []).slice();
       if (o === none){
@@ -716,8 +825,25 @@ async function handle(act, b){
       const answers = draft.map(v => [...v]);
       await mutate(s => {
         const p = s.players.find(x => x.id === me);
-        if (!p || p.answers || s.phase !== "questionnaire") return false;
+        if (!p || p.answers || p.band === null || p.band === undefined || s.phase !== "questionnaire") return false;
         p.answers = answers;
+      });
+      return;
+    }
+    case "set-age": {
+      const band = Number(b.dataset.band);
+      await mutate(s => {
+        const p = s.players.find(x => x.id === me);
+        if (!p || p.answers || s.phase !== "questionnaire") return false;
+        p.band = band;
+      });
+      return;
+    }
+    case "reset-age": {
+      await mutate(s => {
+        const p = s.players.find(x => x.id === me);
+        if (!p || p.answers || s.phase !== "questionnaire") return false;
+        p.band = null;
       });
       return;
     }
@@ -755,7 +881,8 @@ async function handle(act, b){
         const p = s.players.find(x => x.id === me);
         if (!p || !p.powers || p.powers.lifeline < 1 || s.votes[me] !== undefined || s.hidden[me]) return false;
         const correct = guessAnswer(s, item);
-        const everyChoice = [...Array(QUESTIONS[item.q].options.length + 1).keys()];
+        const tb = s.players.find(x => x.id === item.target).band;
+        const everyChoice = [...Array(qFor(tb, item.q).options.length + 1).keys()];
         const wrong = shuffle(everyChoice.filter(k => !correct.includes(k)));
         s.hidden[me] = wrong.slice(0, 2);
         p.powers.lifeline -= 1;
