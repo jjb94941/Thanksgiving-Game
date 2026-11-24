@@ -248,10 +248,9 @@ const CHAPTERS = { 1: "Who Is This?", 2: "How Well Do You Know Me?", 3: "Would Y
 const LADDER_POINTS = [3, 2, 1];   // points for a right guess at clue 1, 2, or 3
 const LADDER_WRONG = -1;           // a wrong ladder guess
 const STEP_MS = 15000;             // each ladder clue appears 15 seconds after the last
-const LADDER_MS = 60000;           // the ladder closes after 60 seconds
 const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-const APP_VERSION = "4.2.0";
-const APP_BUILD = "2026-11-18";
+const APP_VERSION = "4.3.0";
+const APP_BUILD = "2026-11-19";
 document.getElementById("version").textContent = "Family Field Guide v" + APP_VERSION + " · build " + APP_BUILD;
 
 let G = null;           // { id, code, version, state }
@@ -264,7 +263,6 @@ let qStep = 0;          // which questionnaire question is showing
 let betDraft = 1;       // bet chosen for the next guess on this phone
 let doubleDraft = false;// whether this phone will use Double on the next vote
 let renderedStep = 0;   // last ladder clue shown on this phone
-let revealing = false;
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -369,9 +367,6 @@ function ladderStep(s){
   const elapsed = Date.now() - s.startedAt;
   return Math.min(3, Math.floor(elapsed / STEP_MS) + 1);
 }
-function secsLeft(s){
-  return Math.max(0, Math.ceil((s.startedAt + LADDER_MS - Date.now()) / 1000));
-}
 // The clue text for step k of a ladder. opts[k] is the option the target picked (or "none").
 function clueFor(s, item, k){
   const qi = item.qs[k], opt = item.opts[k];
@@ -421,6 +416,21 @@ function revealItem(s){
     p.points = (p.points || 0) + d;
     s.lastDelta[pid] = d;
   });
+}
+// Scores the round, keeps its result for display, and moves to the next item.
+// Runs inside a mutate(). Called when everyone who can vote has voted, or when the host moves on.
+function advance(s){
+  revealItem(s);
+  s.prev = { item: s.items[s.idx], votes: JSON.parse(JSON.stringify(s.votes)), delta: { ...s.lastDelta } };
+  if (s.idx + 1 >= s.items.length){ s.phase = "final"; return; }
+  const cur = s.items[s.idx];
+  s.idx += 1;
+  s.votes = {};
+  s.hidden = {};
+  s.revealed = false;
+  s.lastDelta = {};
+  if (s.items[s.idx].ch !== cur.ch){ s.phase = "break"; return; }
+  s.startedAt = Date.now();
 }
 // One option the target picked for a question, chosen at random when the game starts
 function pickOpt(s, target, qi){
@@ -601,7 +611,7 @@ function renderPlay(s){
     for (let k = 0; k < step; k++){
       clues.push(`<p class="big" style="font-size:20px;padding:6px 0">Clue ${k + 1}: Which person ${esc(clueFor(s, item, k))}?</p>`);
     }
-    prompt = clues.join("") + `<p class="muted center">Clue ${step} of 3 · <span id="cd">${secsLeft(s)}</span> seconds left</p>
+    prompt = clues.join("") + `<p class="muted center">Clue ${step} of 3</p>
       <p class="muted center">Right now: ${LADDER_POINTS[step - 1] * item.mult} if right, ${LADDER_WRONG * item.mult} if wrong.</p>`;
     if (canVote){
       choices = holders(s).map(p =>
@@ -640,8 +650,6 @@ function renderPlay(s){
   let body;
   if (canVote){
     body = extra + choices;
-  } else if (s.revealed){
-    body = revealBlock(s, item);
   } else if (myVote !== undefined){
     body = `<p class="muted center">Your pick is in. Waiting for ${voters.length - votesIn} more.</p>`;
   } else {
@@ -650,20 +658,13 @@ function renderPlay(s){
 
   let host = "";
   if (isHost){
-    if (s.revealed){
-      const last = s.idx + 1 >= s.items.length;
-      const nextIt = s.items[s.idx + 1];
-      const text = last ? "See final scores" : (nextIt && nextIt.ch !== item.ch ? "Finish chapter" : "Next");
-      host = `<button class="center-btn" data-act="next">${text}</button>`;
-    } else {
-      host = `<button class="ghost center-btn" data-act="reveal">Reveal now</button>`;
-    }
+    host = `<button class="ghost center-btn" data-act="skip">Move on now</button>`;
   }
 
-  return `<div class="card">${head}${prompt}${body}${host}</div>${powersLine(s)}${scoresBox(s)}`;
+  return `${prevBlock(s)}<div class="card">${head}${prompt}${body}${host}</div>${powersLine(s)}${scoresBox(s)}`;
 }
 
-function revealBlock(s, item){
+function revealBlock(s, item, votes, delta){
   let answer;
   if (item.kind === "ladder"){
     const tp = s.players.find(p => p.id === item.target);
@@ -673,14 +674,20 @@ function revealBlock(s, item){
     answer = `It was: ${guessAnswer(s, item).map(k => labels[k]).join(" and ")}`;
   } else {
     const c = [0, 0];
-    Object.values(s.votes).forEach(v => c[v.choice] += 1);
+    Object.values(votes).forEach(v => c[v.choice] += 1);
     const d = WYR[item.dilemma];
     answer = c[0] === c[1] ? "A tie, so nobody scores" : `Majority: ${c[0] > c[1] ? d.a : d.b}`;
   }
-  const rows = Object.entries(s.lastDelta || {}).map(([pid, d]) =>
+  const rows = Object.entries(delta || {}).map(([pid, d]) =>
     `<div class="score"><span>${esc(pname(s, pid))}</span><strong>${d > 0 ? "+" + d : d}</strong></div>`).join("")
     || `<p class="muted center">No votes this round.</p>`;
   return `<p class="final">${esc(answer)}</p>${rows}`;
+}
+// Result of the round just finished, shown above the next one.
+function prevBlock(s){
+  const p = s.prev;
+  if (!p) return "";
+  return `<div class="card"><p class="tag">Last round · Chapter ${p.item.ch}</p>${revealBlock(s, p.item, p.votes, p.delta)}</div>`;
 }
 
 function renderBreak(s){
@@ -692,7 +699,7 @@ function renderBreak(s){
   const host = isHost
     ? `<button class="center-btn" data-act="continue">Start Chapter ${nextIt.ch}: ${esc(CHAPTERS[nextIt.ch])}</button>`
     : `<p class="muted center">Waiting for the host to start the next chapter.</p>`;
-  return `<div class="card"><p class="tag">Break</p><p class="big">Chapter ${nextIt.ch}: ${esc(CHAPTERS[nextIt.ch])}</p>${note}${host}</div>${scoresBox(s)}`;
+  return `${prevBlock(s)}<div class="card"><p class="tag">Break</p><p class="big">Chapter ${nextIt.ch}: ${esc(CHAPTERS[nextIt.ch])}</p>${note}${host}</div>${scoresBox(s)}`;
 }
 
 function renderFinal(s){
@@ -711,22 +718,12 @@ function tick(){
   const s = G.state;
   if (s.phase !== "play") return;
   const item = s.items[s.idx];
-  if (!item || item.kind !== "ladder" || s.revealed) return;
-  const cd = $("cd");
-  if (cd) cd.textContent = secsLeft(s);
+  if (!item || item.kind !== "ladder") return;
+  // Only the clue steps change with time. Nothing closes or moves on by timer.
   const step = ladderStep(s);
   if (step !== renderedStep){
     renderedStep = step;
     render();
-  }
-  if (Date.now() >= s.startedAt + LADDER_MS && !revealing){
-    revealing = true;
-    mutate(x => {
-      const it = x.items[x.idx];
-      if (x.phase !== "play" || x.revealed || !it || it.kind !== "ladder") return false;
-      if (Date.now() < x.startedAt + LADDER_MS) return false;
-      revealItem(x);
-    }).catch(() => {}).finally(() => { revealing = false; });
   }
 }
 setInterval(tick, 500);
@@ -902,32 +899,17 @@ async function handle(act, b){
         else { v.choice = Number(raw); }
         if (doubleDraft && p.powers && p.powers.double > 0){ v.double = true; p.powers.double -= 1; }
         s.votes[me] = v;
-        if (eligible(s, item).every(id => s.votes[id] !== undefined)) revealItem(s);
+        if (eligible(s, item).every(id => s.votes[id] !== undefined)) advance(s);
       });
       doubleDraft = false;
       return;
     }
-    case "reveal": {
+    case "skip": {
+      // Host only: score whatever votes are in and move on, for a slow round.
       if (!isHost) return;
       await mutate(s => {
-        if (s.phase !== "play" || s.revealed) return false;
-        revealItem(s);
-      });
-      return;
-    }
-    case "next": {
-      if (!isHost) return;
-      await mutate(s => {
-        if (s.phase !== "play" || !s.revealed) return false;
-        const cur = s.items[s.idx];
-        if (s.idx + 1 >= s.items.length){ s.phase = "final"; return; }
-        s.idx += 1;
-        s.votes = {};
-        s.hidden = {};
-        s.revealed = false;
-        s.lastDelta = {};
-        if (s.items[s.idx].ch !== cur.ch){ s.phase = "break"; return; }
-        s.startedAt = Date.now();
+        if (s.phase !== "play") return false;
+        advance(s);
       });
       return;
     }

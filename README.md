@@ -13,14 +13,14 @@ Each player starts with one **Double** (doubles the points from one vote) and on
 
 ### The four chapters
 
-- **Chapter 1, Who Is This?** A three-step clue ladder about one player. Clue 1 appears at once, clue 2 after 15 seconds, and clue 3 after 30 seconds. Guessing during clue 1 is worth 3 points, clue 2 is worth 2, and clue 3 is worth 1. A wrong guess costs 1 point. The ladder closes after 60 seconds.
+- **Chapter 1, Who Is This?** A three-step clue ladder about one player. Clue 1 appears at once, clue 2 after 15 seconds, and clue 3 after 30 seconds. Guessing during clue 1 is worth 3 points, clue 2 is worth 2, and clue 3 is worth 1. A wrong guess costs 1 point. The ladder stays open until everyone has voted or the host moves on.
 - **Chapter 2, How Well Do You Know Me?** A question about one player. Their answer may include more than one choice, and a guess is right if it matches any of them. Before you answer, bet 1, 2, or 3 points. A right answer gains the bet, and a wrong one loses it, so scores can go negative. The Lifeline removes two wrong choices, and never a right one.
 - **Chapter 3, Would You Rather.** Everyone picks one of two options. You score 1 point if you match the majority. A tie scores nothing.
 - **Chapter 4, Showdown.** The top three players by score become the finalists. Only they vote on three clue ladders, and every point is doubled. Everyone else watches.
 
 The person being described can still guess about themselves, but a guess about yourself scores 0 points.
 
-Votes are revealed when everyone who can vote has voted, or when the host taps **Reveal now**. Ladders also close on their own after 60 seconds. The host taps **Start Chapter** between chapters.
+The game moves on as soon as everyone who can vote has voted. The result of each round appears above the next one. Nothing moves on by timer. If people are taking too long, the host can tap **Move on now** to score the votes in and continue. The host taps **Start Chapter** between chapters.
 
 ## Setup (one time)
 
