@@ -230,7 +230,8 @@ const QUESTIONS_BY_BAND = [KIDS_QS, QUESTIONS, YOUNG_QS, ADULT_QS, MIDDLE_QS, SE
 function qFor(band, t){ return QUESTIONS_BY_BAND[band][t]; }
 
 const NONE_LABEL = "None of the above";
-const NONE_CLUE = "says none of the usual options fit them";
+// The clue for a "None of the above" answer names its question, so players know which topic it is.
+const noneClue = q => `picked none of the above for "${q.replace(/\?$/, "")}"`;
 
 // Would You Rather dilemmas for Chapter 3
 const WYR = [
@@ -249,7 +250,7 @@ const LADDER_POINTS = [3, 2, 1];   // points for a right guess at clue 1, 2, or 
 const LADDER_WRONG = -1;           // a wrong ladder guess
 const STEP_MS = 15000;             // each ladder clue appears 15 seconds after the last
 const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-const APP_VERSION = "4.3.0";
+const APP_VERSION = "4.4.0";
 const APP_BUILD = "2026-11-19";
 document.getElementById("version").textContent = "Family Field Guide v" + APP_VERSION + " · build " + APP_BUILD;
 
@@ -372,7 +373,7 @@ function clueFor(s, item, k){
   const qi = item.qs[k], opt = item.opts[k];
   const tb = s.players.find(p => p.id === item.target).band;
   const Q = qFor(tb, qi);
-  if (opt === Q.options.length) return NONE_CLUE;
+  if (opt === Q.options.length) return noneClue(Q.q);
   return Q.options[opt].clue;
 }
 // Labels for a guess question, including "None of the above" as the last choice
@@ -387,9 +388,19 @@ function guessCorrect(s, item, choice){
   return guessAnswer(s, item).includes(choice);
 }
 // Points for one vote on a ladder or guess item (before Double and multiplier)
+// True if a player's answers match every clue shown so far (steps 1 to `step`).
+// Several people can fit the same clues, so any of them counts as right.
+function matchesClues(s, item, pid, step){
+  const cand = s.players.find(p => p.id === pid);
+  if (!cand || !cand.answers) return false;
+  for (let k = 0; k < step; k++){
+    if (!cand.answers[item.qs[k]].includes(item.opts[k])) return false;
+  }
+  return true;
+}
 function baseDelta(s, item, v){
   if (item.kind === "ladder"){
-    return v.choice === item.target ? LADDER_POINTS[v.step - 1] : LADDER_WRONG;
+    return matchesClues(s, item, v.choice, v.step) ? LADDER_POINTS[v.step - 1] : LADDER_WRONG;
   }
   return guessCorrect(s, item, v.choice) ? v.bet : -v.bet;
 }
@@ -433,9 +444,14 @@ function advance(s){
   s.startedAt = Date.now();
 }
 // One option the target picked for a question, chosen at random when the game starts
+// Prefers a real option over "None of the above", so clues say more. "None" is used only when it is the sole pick.
 function pickOpt(s, target, qi){
-  const sel = s.players.find(p => p.id === target).answers[qi];
-  return sel[Math.floor(Math.random() * sel.length)];
+  const pl = s.players.find(p => p.id === target);
+  const sel = pl.answers[qi];
+  const noneIdx = qFor(pl.band, qi).options.length;
+  const real = sel.filter(x => x !== noneIdx);
+  const pool = real.length ? real : sel;
+  return pool[Math.floor(Math.random() * pool.length)];
 }
 // Builds the full run of items for all four chapters
 function buildItems(s){
@@ -612,7 +628,8 @@ function renderPlay(s){
       clues.push(`<p class="big" style="font-size:20px;padding:6px 0">Clue ${k + 1}: Which person ${esc(clueFor(s, item, k))}?</p>`);
     }
     prompt = clues.join("") + `<p class="muted center">Clue ${step} of 3</p>
-      <p class="muted center">Right now: ${LADDER_POINTS[step - 1] * item.mult} if right, ${LADDER_WRONG * item.mult} if wrong.</p>`;
+      <p class="muted center">Right now: ${LADDER_POINTS[step - 1] * item.mult} if right, ${LADDER_WRONG * item.mult} if wrong.</p>
+      <p class="muted center">Anyone who fits every clue shown counts as right.</p>`;
     if (canVote){
       choices = holders(s).map(p =>
         `<button class="secondary" data-act="vote" data-v="${esc(p.id)}">${p.num}. ${esc(p.name)}</button>`).join("");
@@ -650,6 +667,8 @@ function renderPlay(s){
   let body;
   if (canVote){
     body = extra + choices;
+  } else if (s.revealed){
+    body = revealBlock(s, item, s.votes, s.lastDelta);
   } else if (myVote !== undefined){
     body = `<p class="muted center">Your pick is in. Waiting for ${voters.length - votesIn} more.</p>`;
   } else {
@@ -658,7 +677,9 @@ function renderPlay(s){
 
   let host = "";
   if (isHost){
-    host = `<button class="ghost center-btn" data-act="skip">Move on now</button>`;
+    host = s.revealed
+      ? `<button class="center-btn" data-act="skip">Next question</button>`
+      : `<button class="ghost center-btn" data-act="skip">Move on now</button>`;
   }
 
   return `${prevBlock(s)}<div class="card">${head}${prompt}${body}${host}</div>${powersLine(s)}${scoresBox(s)}`;
@@ -899,7 +920,8 @@ async function handle(act, b){
         else { v.choice = Number(raw); }
         if (doubleDraft && p.powers && p.powers.double > 0){ v.double = true; p.powers.double -= 1; }
         s.votes[me] = v;
-        if (eligible(s, item).every(id => s.votes[id] !== undefined)) advance(s);
+        // Everyone has voted: show the result and wait for the host to move on.
+        if (eligible(s, item).every(id => s.votes[id] !== undefined)) revealItem(s);
       });
       doubleDraft = false;
       return;

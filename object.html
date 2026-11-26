@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Guess the Object</title>
+<style>
+:root{--bg:#fbf6ef;--ink:#2b2118;--accent:#b5562b;--card:#fff;--muted:#7a6a5c;--err:#a11b1b}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;padding:env(safe-area-inset-top) 16px env(safe-area-inset-bottom)}
+main{max-width:480px;margin:0 auto;padding:16px 0 40px}
+h1{font-size:26px;margin:8px 0 4px}
+h2{font-size:20px;margin:6px 0}
+.card{background:var(--card);border-radius:14px;padding:18px;box-shadow:0 2px 8px rgba(0,0,0,.08);margin:12px 0}
+button{font:inherit;font-size:18px;border:0;border-radius:12px;padding:14px 18px;background:var(--accent);color:#fff;width:100%;margin:6px 0;cursor:pointer;text-align:center}
+button.secondary{background:#e9dfd3;color:var(--ink)}
+button.ghost{background:transparent;color:var(--accent);border:2px solid var(--accent)}
+button:disabled{opacity:.4;cursor:default}
+textarea,input{width:100%;font:inherit;font-size:17px;padding:12px;border:2px solid #d9cbbb;border-radius:10px;background:#fff;margin:6px 0 12px}
+label{display:block;color:var(--muted);font-size:15px;margin-top:4px}
+.muted{color:var(--muted);font-size:15px;margin:6px 0}
+.center{text-align:center}
+.tag{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 6px}
+.big{font-size:24px;font-weight:700;text-align:center;padding:12px 8px;line-height:1.25;word-wrap:break-word}
+.final{font-size:20px;font-weight:700;text-align:center;margin:10px 0}
+.row{display:flex;gap:8px}
+.row>button{flex:1}
+ul.plist{list-style:none;padding:0;margin:0 0 8px}
+ul.plist li{padding:8px 0;border-bottom:1px solid #eee;font-size:16px;word-wrap:break-word}
+.chip{display:inline-block;font-size:13px;padding:3px 8px;border-radius:8px;background:#efe7dc;margin:2px 4px 2px 0}
+#flash{color:var(--err);min-height:1.3em;font-size:15px;text-align:center}
+.version{color:var(--muted);font-size:12px;text-align:center;margin:24px 0 8px;opacity:.8}
+</style>
+</head>
+<body>
+<main id="app"><p class="muted">Loading…</p></main>
+<p id="flash"></p>
+<p id="version" class="version"></p>
+
+<script src="config.js"></script>
+<script>
+// Game logic runs on the server (Supabase function "object-game"). The object is never sent to this page.
+const APP_VERSION = "2.0.0";
+const APP_BUILD = "2026-11-26";
+document.getElementById("version").textContent = "Guess the Object v" + APP_VERSION + " · build " + APP_BUILD;
+
+const API = FFG_CONFIG.SUPABASE_URL + "/functions/v1/object-game";
+
+let G = null;     // { code, state, mine }
+let me = null;    // this phone's player id, e.g. "p2"
+let lastHtml = "";
+let pollTimer = null;
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pname = (s, pid) => (s.players.find(p => p.id === pid) || {}).name || "?";
+const ident = code => { try { return JSON.parse(localStorage.getItem("ffgo:" + code) || "{}"); } catch(e){ return {}; } };
+
+function say(text){
+  $("flash").textContent = text;
+  setTimeout(() => { if ($("flash").textContent === text) $("flash").textContent = ""; }, 4000);
+}
+
+async function call(action, body = {}){
+  const r = await fetch(API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "apikey": FFG_CONFIG.SUPABASE_KEY, "Authorization": "Bearer " + FFG_CONFIG.SUPABASE_KEY },
+    body: JSON.stringify({ action, ...body })
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || "Something went wrong. Please try again.");
+  return data;
+}
+
+async function refresh(){
+  if (!G) return;
+  try {
+    const d = await call("state", { code: G.code, pid: me });
+    G.state = d.state;
+    G.mine = d.mine;
+    render();
+  } catch(e){ /* try again on the next tick */ }
+}
+
+async function openGame(code){
+  G = { code: code.trim().toUpperCase(), state: null, mine: [] };
+  me = ident(G.code).me || null;
+  try {
+    const d = await call("state", { code: G.code, pid: me });
+    G.state = d.state;
+    G.mine = d.mine;
+  } catch(e){
+    G = null;
+    say(e.message);
+    return;
+  }
+  history.replaceState(null, "", "?code=" + G.code);
+  clearInterval(pollTimer);
+  pollTimer = setInterval(refresh, 2000);
+  render();
+}
+
+/* ---------- rendering ---------- */
+
+function render(){
+  const html = G && G.state ? renderGame() : (G ? renderWaiting() : renderHome());
+  if (html === lastHtml) return;
+  // Keep typed text when the page redraws because the game changed.
+  const keep = {};
+  document.querySelectorAll("#app [data-keep]").forEach(el => keep[el.id] = el.value);
+  $("app").innerHTML = html;
+  lastHtml = html;
+  Object.entries(keep).forEach(([id, v]) => { const el = $(id); if (el) el.value = v; });
+}
+
+function renderHome(){
+  return `
+    <h1>Guess the Object</h1>
+    <p class="muted">The game thinks of an object. Each player asks yes-or-no questions on their own phone. Your answers are private to you. Then everyone takes a turn guessing.</p>
+    <div class="card">
+      <h2>Start a game</h2>
+      <label for="names">Player names, one per line (2 to 12)</label>
+      <textarea id="names" rows="7" data-keep></textarea>
+      <button data-act="create">Create game</button>
+    </div>
+    <div class="card">
+      <h2>Join a game</h2>
+      <label for="code">Game code</label>
+      <input id="code" maxlength="6" autocapitalize="characters" autocomplete="off" data-keep>
+      <button class="secondary" data-act="join">Join</button>
+    </div>`;
+}
+
+function renderWaiting(){
+  return `<div class="card"><p class="muted center">Connecting to game…</p></div>
+    <button class="ghost" data-act="leave">Back</button>`;
+}
+
+function renderGame(){
+  const s = G.state;
+  const who = me ? ` · You are ${esc(pname(s, me))}` : "";
+  const header = `<p class="tag">Game code <strong>${esc(G.code)}</strong>${who}</p>`;
+  let body;
+  if (s.phase === "lobby") body = renderLobby(s);
+  else if (s.phase === "play") body = renderPlay(s);
+  else body = renderOver(s);
+  return header + body + `<button class="ghost" data-act="leave">Leave game on this phone</button>`;
+}
+
+function renderLobby(s){
+  const joined = s.players.filter(p => p.claimed).length;
+  const list = s.players.map(p =>
+    `<li>${esc(p.name)} ${p.claimed ? "✓ joined" : '<span class="muted">not joined yet</span>'}</li>`).join("");
+  let pick = "";
+  if (!me){
+    const open = s.players.filter(p => !p.claimed);
+    pick = `<h2>Who are you?</h2>` + (open.length
+      ? `<p class="muted">Tap your name.</p>` + open.map(p =>
+          `<button class="secondary" data-act="claim" data-pid="${esc(p.id)}">I'm ${esc(p.name)}</button>`).join("")
+      : `<p class="muted">Everyone has picked a name.</p>`);
+  } else {
+    pick = `<p class="muted">Waiting for everyone to join.</p>`;
+  }
+  return `<div class="card"><h2>Lobby</h2><ul class="plist">${list}</ul>${pick}
+    <button data-act="start" ${joined < 2 ? "disabled" : ""}>Start the game</button>
+    <p class="muted center">At least two players need to join.</p></div>`;
+}
+
+function renderPlay(s){
+  const n = s.players.filter(p => p.claimed).length;
+  const askedNow = s.asked.length;
+  const respondedNow = s.responded.length;
+  const head = `<p class="tag">Round ${s.round}</p>`;
+
+  // Public log: who has asked, who has answered, and what happened each round.
+  const log = s.log.length
+    ? `<div class="card"><p class="tag">Game log</p><ul class="plist">${s.log.map(l => `<li>${esc(l)}</li>`).join("")}</ul></div>`
+    : "";
+
+  // Each player's own questions and answers only.
+  const mineList = G.mine.filter(m => m.round === s.round);
+  const mineBlock = me && G.mine.length
+    ? `<div class="card"><p class="tag">Your questions</p><ul class="plist">${G.mine.map(m =>
+        `<li>Round ${m.round}: "${esc(m.question)}" → <strong>${m.answer === "yes" ? "Yes" : "No"}</strong></li>`).join("")}</ul></div>`
+    : "";
+
+  const player = s.players.find(p => p.id === me);
+  let card = "";
+  if (!player || !player.claimed){
+    card = `<p class="muted center">You are watching this game.</p>`;
+  } else if (s.stage === "asking"){
+    if (!s.asked.includes(me)){
+      card = `<p class="big">Your turn to ask</p>
+        <label for="qText">Ask a question that can be answered yes or no</label>
+        <input id="qText" data-keep autocomplete="off" maxlength="200">
+        <button data-act="ask">Ask</button>`;
+    } else {
+      card = `<p class="muted center">Your question is in. Waiting for others to ask (${askedNow} of ${n}).</p>`;
+    }
+  } else {
+    if (!s.responded.includes(me)){
+      card = `<p class="big">Guess the object</p>
+        <label for="gText">Your guess</label>
+        <input id="gText" data-keep autocomplete="off" maxlength="100">
+        <div class="row"><button data-act="guess">Submit guess</button><button class="secondary" data-act="pass">Pass</button></div>`;
+    } else {
+      card = `<p class="muted center">Your turn is done for this round. Waiting for others (${respondedNow} of ${n}).</p>`;
+    }
+  }
+
+  const guesses = s.guesses.filter(g => g.round === s.round);
+  const guessBlock = guesses.length
+    ? `<div class="card"><p class="tag">Guesses this round</p><ul class="plist">${guesses.map(g =>
+        `<li>${esc(pname(s, g.pid))}: "${esc(g.text)}" ${g.correct ? "" : "— wrong"}</li>`).join("")}</ul></div>`
+    : "";
+
+  const status = s.players.filter(p => p.claimed).map(p => {
+    const a = s.asked.includes(p.id) ? "asked" : "not asked yet";
+    const g = s.stage === "guessing" ? (s.responded.includes(p.id) ? " · answered" : " · guessing") : "";
+    return `<span class="chip">${esc(p.name)}: ${a}${g}</span>`;
+  }).join("");
+
+  return `${head}<div class="card">${card}</div>${guessBlock}${mineBlock}
+    <div class="card"><p class="tag">Players this round</p>${status}</div>${log}`;
+}
+
+function renderOver(s){
+  const headline = s.winner ? `${esc(pname(s, s.winner))} got it right!` : "Game over. Nobody got it.";
+  const log = s.log.length
+    ? `<div class="card"><p class="tag">Game log</p><ul class="plist">${s.log.map(l => `<li>${esc(l)}</li>`).join("")}</ul></div>`
+    : "";
+  return `<div class="card"><div class="final">${headline}</div>
+    <p class="big">The object was: ${esc(s.reveal || "?")}</p></div>${log}${mineBlockOver()}`;
+}
+
+function mineBlockOver(){
+  if (!me || !G.mine.length) return "";
+  return `<div class="card"><p class="tag">Your questions</p><ul class="plist">${G.mine.map(m =>
+    `<li>Round ${m.round}: "${esc(m.question)}" → <strong>${m.answer === "yes" ? "Yes" : "No"}</strong></li>`).join("")}</ul></div>`;
+}
+
+/* ---------- actions ---------- */
+
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-act]");
+  if (!b || b.disabled) return;
+  try {
+    await handle(b.dataset.act, b);
+  } catch (err){
+    say(err.message);
+  }
+  await refresh();
+});
+
+async function handle(act, b){
+  switch (act){
+    case "create": {
+      const names = $("names").value.split("\n").map(x => x.trim()).filter(Boolean);
+      if (names.length < 2) return say("Enter at least 2 names.");
+      const d = await call("create", { names });
+      await openGame(d.code);
+      return;
+    }
+    case "join": {
+      const code = $("code").value.trim();
+      if (code.length < 4) return say("Enter the game code.");
+      await openGame(code);
+      return;
+    }
+    case "claim": {
+      const pid = b.dataset.pid;
+      await call("claim", { code: G.code, pid });
+      me = pid;
+      localStorage.setItem("ffgo:" + G.code, JSON.stringify({ me }));
+      return;
+    }
+    case "start": {
+      await call("start", { code: G.code });
+      return;
+    }
+    case "ask": {
+      const question = $("qText").value.trim();
+      if (!question) return say("Type your question first.");
+      const d = await call("ask", { code: G.code, pid: me, question });
+      say(d.answer === "yes" ? "Answer: Yes" : "Answer: No");
+      return;
+    }
+    case "guess": {
+      const text = $("gText").value.trim();
+      if (!text) return say("Type a guess, or tap Pass.");
+      const d = await call("guess", { code: G.code, pid: me, text });
+      say(d.correct ? "Correct!" : "Not quite. Your guess is recorded.");
+      return;
+    }
+    case "pass": {
+      await call("pass", { code: G.code, pid: me });
+      return;
+    }
+    case "leave": {
+      clearInterval(pollTimer);
+      pollTimer = null;
+      G = null; me = null;
+      history.replaceState(null, "", location.pathname);
+      return;
+    }
+  }
+}
+
+/* ---------- start ---------- */
+
+const params = new URLSearchParams(location.search);
+if (params.get("code")){
+  openGame(params.get("code"));
+} else {
+  render();
+}
+</script>
+</body>
+</html>

@@ -13,14 +13,14 @@ Each player starts with one **Double** (doubles the points from one vote) and on
 
 ### The four chapters
 
-- **Chapter 1, Who Is This?** A three-step clue ladder about one player. Clue 1 appears at once, clue 2 after 15 seconds, and clue 3 after 30 seconds. Guessing during clue 1 is worth 3 points, clue 2 is worth 2, and clue 3 is worth 1. A wrong guess costs 1 point. The ladder stays open until everyone has voted or the host moves on.
+- **Chapter 1, Who Is This?** A three-step clue ladder about one player. Clue 1 appears at once, clue 2 after 15 seconds, and clue 3 after 30 seconds. Guessing during clue 1 is worth 3 points, clue 2 is worth 2, and clue 3 is worth 1. A guess is right if that person fits every clue shown so far, so more than one person can be right. A wrong guess costs 1 point. The ladder stays open until everyone has voted or the host moves on.
 - **Chapter 2, How Well Do You Know Me?** A question about one player. Their answer may include more than one choice, and a guess is right if it matches any of them. Before you answer, bet 1, 2, or 3 points. A right answer gains the bet, and a wrong one loses it, so scores can go negative. The Lifeline removes two wrong choices, and never a right one.
 - **Chapter 3, Would You Rather.** Everyone picks one of two options. You score 1 point if you match the majority. A tie scores nothing.
 - **Chapter 4, Showdown.** The top three players by score become the finalists. Only they vote on three clue ladders, and every point is doubled. Everyone else watches.
 
 The person being described can still guess about themselves, but a guess about yourself scores 0 points.
 
-The game moves on as soon as everyone who can vote has voted. The result of each round appears above the next one. Nothing moves on by timer. If people are taking too long, the host can tap **Move on now** to score the votes in and continue. The host taps **Start Chapter** between chapters.
+When everyone who can vote has voted, the round's result appears. Nothing moves on by timer. The host taps **Next question** to continue. If people are taking too long, the host can tap **Move on now** to score the votes in and continue. The result of each round also appears above the next one. The host taps **Start Chapter** between chapters.
 
 ## Setup (one time)
 
@@ -37,3 +37,18 @@ This is a static site with no build step. It uses a Supabase project for shared 
 - The public key in `config.js` is meant to be public. The table's current rules let anyone with that key read or change any game. That's fine for a family game with an unguessable six-letter code, but tighter rules can be added later.
 - Ladder timing uses each phone's clock. Phones with badly wrong clocks may see the clue step change at slightly different times.
 - Use **Leave game on this phone** to exit. Refreshing keeps everyone in the game.
+
+## Guess the Object
+
+A second game on its own page, `object.html`, with Claude as the one who knows the object.
+
+**Setup (one time).** The game runs as a Supabase Edge Function named `object-game`, with two private tables (`object_games` and `object_questions`). Add your Anthropic API key in Supabase under **Edge Functions → Secrets**, with the name `ANTHROPIC_API_KEY`.
+
+**How to play**
+1. Enter at least two player names and tap **Create game**. Share the code.
+2. Each player opens the page, joins with the code, and taps their name. Anyone can tap **Start the game** once at least two people have joined.
+3. Each round, every player asks one yes-or-no question on their own phone. Claude answers Yes or No. Only the player who asked sees the answer.
+4. Once everyone has asked, each player can submit one guess or pass. Guesses are visible to everyone.
+5. The first correct guess wins, and the object is revealed. If nobody gets it, the game log says so and the next round starts.
+
+The object is picked at random from a list in the function, and it is never sent to the page. The function has no login, so anyone with the code can take actions, the same as the other games.
