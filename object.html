@@ -40,7 +40,7 @@ ul.plist li{padding:8px 0;border-bottom:1px solid #eee;font-size:16px;word-wrap:
 <script src="config.js"></script>
 <script>
 // Game logic runs on the server (Supabase function "object-game"). The object is never sent to this page.
-const APP_VERSION = "2.4.1";
+const APP_VERSION = "2.4.2";
 const APP_BUILD = "2026-11-26";
 document.getElementById("version").textContent = "Guess the Object v" + APP_VERSION + " · build " + APP_BUILD;
 
@@ -304,6 +304,7 @@ async function handle(act, b){
       pollTimer = null;
       G = null; me = null; token = null;
       history.replaceState(null, "", location.pathname);
+      render();
       return;
     }
   }
