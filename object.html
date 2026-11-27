@@ -40,7 +40,7 @@ ul.plist li{padding:8px 0;border-bottom:1px solid #eee;font-size:16px;word-wrap:
 <script src="config.js"></script>
 <script>
 // Game logic runs on the server (Supabase function "object-game"). The object is never sent to this page.
-const APP_VERSION = "2.4.0";
+const APP_VERSION = "2.4.1";
 const APP_BUILD = "2026-11-26";
 document.getElementById("version").textContent = "Guess the Object v" + APP_VERSION + " · build " + APP_BUILD;
 
@@ -210,7 +210,7 @@ function renderPlay(s){
 
   const guesses = s.guesses.filter(g => g.round === s.round);
   const guessBlock = guesses.length
-    ? `<div class="card"><p class="tag">Guesses this round</p><ul class="plist">${guesses.map(g =>
+    ? `<div class="card"><p class="tag">Your guesses this round (others' guesses appear when the round ends)</p><ul class="plist">${guesses.map(g =>
         `<li>${esc(pname(s, g.pid))}: "${esc(g.text)}"</li>`).join("")}</ul></div>`
     : "";
 
