@@ -40,7 +40,7 @@ ul.plist li{padding:8px 0;border-bottom:1px solid #eee;font-size:16px;word-wrap:
 <script src="config.js"></script>
 <script>
 // Game logic runs on the server (Supabase function "object-game"). The object is never sent to this page.
-const APP_VERSION = "2.0.0";
+const APP_VERSION = "2.3.0";
 const APP_BUILD = "2026-11-26";
 document.getElementById("version").textContent = "Guess the Object v" + APP_VERSION + " · build " + APP_BUILD;
 
@@ -77,6 +77,7 @@ async function refresh(){
   try {
     const d = await call("state", { code: G.code, pid: me });
     G.state = d.state;
+    G.state.all = d.all;
     G.mine = d.mine;
     render();
   } catch(e){ /* try again on the next tick */ }
@@ -88,6 +89,7 @@ async function openGame(code){
   try {
     const d = await call("state", { code: G.code, pid: me });
     G.state = d.state;
+    G.state.all = d.all;
     G.mine = d.mine;
   } catch(e){
     G = null;
@@ -116,7 +118,7 @@ function render(){
 function renderHome(){
   return `
     <h1>Guess the Object</h1>
-    <p class="muted">The game thinks of an object. Each player asks yes-or-no questions on their own phone. Your answers are private to you. Then everyone takes a turn guessing.</p>
+    <p class="muted">The game thinks of an object. Each round, every player asks a yes-or-no question, and only they see the answer. After asking, each player can guess or move to the next question. When everyone has finished, the first correct guess wins. If no one is right, the next round begins.</p>
     <div class="card">
       <h2>Start a game</h2>
       <label for="names">Player names, one per line (2 to 12)</label>
@@ -178,7 +180,6 @@ function renderPlay(s){
     : "";
 
   // Each player's own questions and answers only.
-  const mineList = G.mine.filter(m => m.round === s.round);
   const mineBlock = me && G.mine.length
     ? `<div class="card"><p class="tag">Your questions</p><ul class="plist">${G.mine.map(m =>
         `<li>Round ${m.round}: "${esc(m.question)}" → <strong>${m.answer === "yes" ? "Yes" : "No"}</strong></li>`).join("")}</ul></div>`
@@ -188,35 +189,31 @@ function renderPlay(s){
   let card = "";
   if (!player || !player.claimed){
     card = `<p class="muted center">You are watching this game.</p>`;
-  } else if (s.stage === "asking"){
-    if (!s.asked.includes(me)){
-      card = `<p class="big">Your turn to ask</p>
-        <label for="qText">Ask a question that can be answered yes or no</label>
-        <input id="qText" data-keep autocomplete="off" maxlength="200">
-        <button data-act="ask">Ask</button>`;
-    } else {
-      card = `<p class="muted center">Your question is in. Waiting for others to ask (${askedNow} of ${n}).</p>`;
-    }
+  } else if (!s.asked.includes(me)){
+    card = `<p class="big">Ask your question</p>
+      <p class="muted center">Only you will see the answer.</p>
+      <label for="qText">Ask a question that can be answered yes or no</label>
+      <input id="qText" data-keep autocomplete="off" maxlength="200">
+      <button data-act="ask">Ask</button>`;
+  } else if (!s.responded.includes(me)){
+    card = `<p class="big">Guess the object</p>
+      <p class="muted center">Guess now, or go to the next question. The round ends when everyone has finished.</p>
+      <label for="gText">Your guess</label>
+      <input id="gText" data-keep autocomplete="off" maxlength="100">
+      <div class="row"><button data-act="guess">Submit guess</button><button class="secondary" data-act="pass">Next question</button></div>`;
   } else {
-    if (!s.responded.includes(me)){
-      card = `<p class="big">Guess the object</p>
-        <label for="gText">Your guess</label>
-        <input id="gText" data-keep autocomplete="off" maxlength="100">
-        <div class="row"><button data-act="guess">Submit guess</button><button class="secondary" data-act="pass">Pass</button></div>`;
-    } else {
-      card = `<p class="muted center">Your turn is done for this round. Waiting for others (${respondedNow} of ${n}).</p>`;
-    }
+    card = `<p class="muted center">Your choice is in. Waiting for others to finish (${respondedNow} of ${n}).</p>`;
   }
 
   const guesses = s.guesses.filter(g => g.round === s.round);
   const guessBlock = guesses.length
     ? `<div class="card"><p class="tag">Guesses this round</p><ul class="plist">${guesses.map(g =>
-        `<li>${esc(pname(s, g.pid))}: "${esc(g.text)}" ${g.correct ? "" : "— wrong"}</li>`).join("")}</ul></div>`
+        `<li>${esc(pname(s, g.pid))}: "${esc(g.text)}"</li>`).join("")}</ul></div>`
     : "";
 
   const status = s.players.filter(p => p.claimed).map(p => {
     const a = s.asked.includes(p.id) ? "asked" : "not asked yet";
-    const g = s.stage === "guessing" ? (s.responded.includes(p.id) ? " · answered" : " · guessing") : "";
+    const g = s.asked.includes(p.id) ? (s.responded.includes(p.id) ? " · done" : " · guessing") : "";
     return `<span class="chip">${esc(p.name)}: ${a}${g}</span>`;
   }).join("");
 
@@ -230,13 +227,15 @@ function renderOver(s){
     ? `<div class="card"><p class="tag">Game log</p><ul class="plist">${s.log.map(l => `<li>${esc(l)}</li>`).join("")}</ul></div>`
     : "";
   return `<div class="card"><div class="final">${headline}</div>
-    <p class="big">The object was: ${esc(s.reveal || "?")}</p></div>${log}${mineBlockOver()}`;
+    <p class="big">The object was: ${esc(s.reveal || "?")}</p></div>${log}${allBlock(s)}`;
 }
 
-function mineBlockOver(){
-  if (!me || !G.mine.length) return "";
-  return `<div class="card"><p class="tag">Your questions</p><ul class="plist">${G.mine.map(m =>
-    `<li>Round ${m.round}: "${esc(m.question)}" → <strong>${m.answer === "yes" ? "Yes" : "No"}</strong></li>`).join("")}</ul></div>`;
+// Once the object is identified, every question and answer is shown to everyone.
+function allBlock(s){
+  const list = s.all || [];
+  if (!list.length) return "";
+  return `<div class="card"><p class="tag">All questions and answers</p><ul class="plist">${list.map(m =>
+    `<li>Round ${m.round} · ${esc(pname(s, m.player_id))}: "${esc(m.question)}" → <strong>${m.answer === "yes" ? "Yes" : "No"}</strong></li>`).join("")}</ul></div>`;
 }
 
 /* ---------- actions ---------- */
@@ -288,8 +287,8 @@ async function handle(act, b){
     case "guess": {
       const text = $("gText").value.trim();
       if (!text) return say("Type a guess, or tap Pass.");
-      const d = await call("guess", { code: G.code, pid: me, text });
-      say(d.correct ? "Correct!" : "Not quite. Your guess is recorded.");
+      await call("guess", { code: G.code, pid: me, text });
+      say("Guess recorded. Results show when everyone has finished.");
       return;
     }
     case "pass": {
