@@ -40,7 +40,7 @@ ul.plist li{padding:8px 0;border-bottom:1px solid #eee;font-size:16px;word-wrap:
 <script src="config.js"></script>
 <script>
 // Game logic runs on the server (Supabase function "object-game"). The object is never sent to this page.
-const APP_VERSION = "2.3.0";
+const APP_VERSION = "2.4.0";
 const APP_BUILD = "2026-11-26";
 document.getElementById("version").textContent = "Guess the Object v" + APP_VERSION + " · build " + APP_BUILD;
 
@@ -48,6 +48,7 @@ const API = FFG_CONFIG.SUPABASE_URL + "/functions/v1/object-game";
 
 let G = null;     // { code, state, mine }
 let me = null;    // this phone's player id, e.g. "p2"
+let token = null; // secret proving this phone holds that player's name; never shown to other phones
 let lastHtml = "";
 let pollTimer = null;
 
@@ -75,7 +76,7 @@ async function call(action, body = {}){
 async function refresh(){
   if (!G) return;
   try {
-    const d = await call("state", { code: G.code, pid: me });
+    const d = await call("state", { code: G.code, pid: me, token });
     G.state = d.state;
     G.state.all = d.all;
     G.mine = d.mine;
@@ -85,9 +86,11 @@ async function refresh(){
 
 async function openGame(code){
   G = { code: code.trim().toUpperCase(), state: null, mine: [] };
-  me = ident(G.code).me || null;
+  const id = ident(G.code);
+  me = id.me || null;
+  token = id.token || null;
   try {
-    const d = await call("state", { code: G.code, pid: me });
+    const d = await call("state", { code: G.code, pid: me, token });
     G.state = d.state;
     G.state.all = d.all;
     G.mine = d.mine;
@@ -268,9 +271,10 @@ async function handle(act, b){
     }
     case "claim": {
       const pid = b.dataset.pid;
-      await call("claim", { code: G.code, pid });
+      const d = await call("claim", { code: G.code, pid });
       me = pid;
-      localStorage.setItem("ffgo:" + G.code, JSON.stringify({ me }));
+      token = d.token;
+      localStorage.setItem("ffgo:" + G.code, JSON.stringify({ me, token }));
       return;
     }
     case "start": {
@@ -280,25 +284,25 @@ async function handle(act, b){
     case "ask": {
       const question = $("qText").value.trim();
       if (!question) return say("Type your question first.");
-      const d = await call("ask", { code: G.code, pid: me, question });
+      const d = await call("ask", { code: G.code, pid: me, token, question });
       say(d.answer === "yes" ? "Answer: Yes" : "Answer: No");
       return;
     }
     case "guess": {
       const text = $("gText").value.trim();
       if (!text) return say("Type a guess, or tap Pass.");
-      await call("guess", { code: G.code, pid: me, text });
+      await call("guess", { code: G.code, pid: me, token, text });
       say("Guess recorded. Results show when everyone has finished.");
       return;
     }
     case "pass": {
-      await call("pass", { code: G.code, pid: me });
+      await call("pass", { code: G.code, pid: me, token });
       return;
     }
     case "leave": {
       clearInterval(pollTimer);
       pollTimer = null;
-      G = null; me = null;
+      G = null; me = null; token = null;
       history.replaceState(null, "", location.pathname);
       return;
     }
